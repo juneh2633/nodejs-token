@@ -20,7 +20,7 @@ app.get("/loginPage", (req, res) => {
 // =>get/accounts?id=test1234&password=12341234 로그인 기능
 // =>get/accounts?name=왕준혁&phonenumber=01085490120 아이디 찾기
 // =>get/accounts?id=test1234&name=왕준혁&phonenumber=01085490120 비밀번호 찾기
-app.get("/account", (req, res) => {
+app.get("/accounts", (req, res) => {
     const { idx } = req.body;
     const result = {
         "success": false,
