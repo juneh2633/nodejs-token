@@ -1,5 +1,6 @@
     // Package
 const express = require("express");
+const session = require("express-session");
 const url = require("url");
 
     // Init
@@ -20,12 +21,12 @@ const replyPattern = /^.{1,500}$/;
 
 app.use(session({
     secret: "juneh2633",
-    resave: false,
-    saveUninitialized: true,
+    resave: false,  //변경이 없는 경우에도 다시 저장할지(매 request마다)
+    saveUninitialized: false,    //저장하지 않은 세션에 대해 아무내용없는 세션을 저장할지
     cookie: { secure: false } // HTTPS를 사용하는 경우 true로 설정 
 }));
 
-// Apis
+// APIs
 //html은 왜 public에 넣었을까
 app.get("/", (req, res) => {    //requist, response
     res.sendFile(`${__dirname}/public/index.html`); //__dirname (express의 기능: 현재까지의 절대경로)
@@ -174,7 +175,9 @@ app.get("/account/:id", (req, res, next) => {
         if (id == null) {
             throw { status: 400, message: "dont have params " };
         }
-
+        if (id != req.session.id ) {
+            throw { status: 401, message: "dont have permision " };
+        }
         const userId = id;
         const userPassword = req.session.password;
         const userName = req.session.name;
@@ -218,7 +221,7 @@ app.post("/account", (req, res, next) => {
 
         //값 반환
         const result = {
-            "message": "account post success",
+            "message": "Got a Post request at /account",
             "data": null
         };
         res.status(200).send(result);  
@@ -257,7 +260,7 @@ app.put("/account/:id", (req, res, next) => {
 
         //값 반환
         const result = {
-            "message": `${id} account update success`,
+            "message": `Got a PUT request at /account/${id}`,
             "data": null
         };        
         res.status(200).send(result);          
@@ -276,13 +279,15 @@ app.delete("/account/:id", (req, res, next) => {
         if (id == null) {
             throw { status: 400, message: "dont have params" };
         }
-
+        if (id != req.session.id) {
+            throw { status: 401, message: "dont have permision" };
+        }  
         //
         //소프트딜리트 진행
         //
 
         const result = {
-            "message": `${id} account delete success`,
+            "message": `Got a DELETE request at /account/${id}`,
             "data": null
         }; 
         res.status(200).send(result);          
@@ -337,7 +342,7 @@ app.get("/boards", (req, res, next) => {
     }    
 });
 
-// get/board/1 게시글 가져오기
+// get/board/1 특정 게시글 가져오기
 app.get("/board/:uid", (req, res, next) => {
     try {
         if (req.session.id == null) {
@@ -395,7 +400,7 @@ app.post("/board", (req, res, next) => {
         
 
         const result = {
-            "message": "board post success",
+            "message": "Got a POST requst at /board",
             "data":  null
         };      
         res.status(200).send(result);        
@@ -421,12 +426,17 @@ app.put("/board/:uid", (req, res, next) => {
         }             
 
         //DB 통신
+        const permisionQuery = `SELECT * FROM board WHERE board_uid = ${uid}`;
+        const id = "";  //게시글 작성자 불러오기
+        if (id != req.session.id) {
+            throw { status: 401, message: "dont have permision" };
+        }  
         const query = `UPDATE board SET title = ${title}, maintext = ${maintext} WHERE board_uid = ${uid}`;
 
 
 
         const result = {
-            "message": "board update success",
+            "message": `Got a PUT request at /board/${uid}`,
             "data": null
         };
         res.status(200).send(result);             
@@ -449,12 +459,17 @@ app.delete("/board/:uid", (req, res, next) => {
         }
 
         //DB 통신
+        const permisionQuery = `SELECT * FROM board WHERE board_uid = ${uid}`;
+        const id = "";  //게시글 작성자 불러오기
+        if (id != req.session.id) {
+            throw { status: 401, message: "dont have permision" };
+        }  
         const query = `UPDATE board SET board_deleted = 1 WHERE board_uid = ${uid}`;
 
         
         //DB 통신 결과 처리
         const result = {
-            "message": "board delete success",
+            "message": `Got a DELETE request at /board/${uid}`,
             "data": null
         };
         //값 반환
@@ -539,7 +554,7 @@ app.post("/board/:uid/reply", (req, res, next) => {
 
         //
         const result = {
-            "message": "post reply success",
+            "message": `Got a POST request at /board/${uid}/reply`,
             "data": replies
         };      
         res.status(200).send(result);         
@@ -565,13 +580,20 @@ app.put("/board/:boardUid/reply/:replyUid", (req, res, next) => {
         }     
 
         //
+        const permisionQuery = `SELECT * FROM reply WHERE reply_uid = ${replyUid}`;
+
+        const id = "";  //댓글 작성자 불러오기
+        if (id != req.session.id) {
+            throw { status: 401, message: "dont have permision" };
+        }  
+
         const query = `UPDATE reply SET reply_main = ${replyMain} WHERE reply_uid = ${replyUid}`;
 
 
         //
 
         const result = {
-            "message": "update reply success",
+            "message": `Got a PUT request at /board/${boardUid}/reply/${replyUid}`,
             "data": replies
         };      
         res.status(200).send(result);         
@@ -597,12 +619,19 @@ app.delete("/board/:boardUid/reply/:replyUid", (req, res, next) => {
         }     
 
         //
+        const permisionQuery = `SELECT * FROM reply WHERE reply_uid = ${replyUid}`;
+        
+        const id = "";  //댓글 작성자 불러오기
+        if (id != req.session.id) {
+            throw { status: 401, message: "dont have permision" };
+        }  
+
         const query = `UPDATE reply SET reply_deletes = 1 WHERE reply_uid = ${replyUid}`;
 
         //
 
         const result = {
-            "message": "update reply success",
+            "message": `Got a DELETE request at /board/${boardUid}/reply/${replyUid}`,
             "data": replies
         };      
         res.status(200).send(result);             
@@ -611,7 +640,7 @@ app.delete("/board/:boardUid/reply/:replyUid", (req, res, next) => {
     }
 });
 
-app.use((req, req, next) => {
+app.use((req, res, next) => {
     res.status(404).send("cant find file");
 });
 app.use((err, req, res, next) => {
@@ -631,3 +660,9 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
     console.log(`${port}번에서 웹서버 실행`)
 })
+
+//질문
+//세션 체크는 중복된 코드이지만, 이를 미들웨어로 따로 만들었을 때, 코드가 더 길어질 수 있는데, 그래도 따로 만들어주는게 맞나요
+//db로 불러온 값도 체크해줘야 하나요( ex: 불러온 제목의 정규식 검사)
+//api 코드 길어질거 같은데, 따로 분리 안해도 되나요
+//에러 핸들링 에서 메세지에 숫자만 쓰는 사람도 봤는데 보통 어떻게 하는게 정답인가요
