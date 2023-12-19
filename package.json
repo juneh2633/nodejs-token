@@ -1,7 +1,15 @@
 {
+    "main": "./server.js",
   "dependencies": {
     "express": "^4.18.2",
     "express-session": "^1.17.3",
-    "express-sesssion": "^1.15.5"
-  }
+    "express-sesssion": "^1.15.5",
+    "mysql": "^2.18.1"
+  },
+  "scripts": {
+    "start": "nodemon"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+    }
 }

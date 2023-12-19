@@ -2,11 +2,24 @@
 const express = require("express");
 const session = require("express-session");
 const url = require("url");
+const mysql = require("mysql");
 
     // Init
 const app = express();
 const port = 8001;
-
+const db = mysql.createConnection({
+    host: "localhost",
+    user: 'juneh',
+    password: '2633',
+    database: 'nodejs_study'
+});
+db.connect(err => {
+    if (err) {
+        console.error('Database connection failed: ' + err.stack);
+        return;
+    }
+    console.log('Connected to database.');
+});
     //pattern
 const pattern = /^[a-zA-Z0-9]{6,30}$/
 const namePattern = /^[a-zA-Z가-힣]{1,30}$/;
@@ -22,279 +35,34 @@ const replyPattern = /^.{1,500}$/;
 app.use(session({
     secret: "juneh2633",
     resave: false,  //변경이 없는 경우에도 다시 저장할지(매 request마다)
-    saveUninitialized: false,    //저장하지 않은 세션에 대해 아무내용없는 세션을 저장할지
+    saveUninitialized: true,    //저장하지 않은 세션에 대해 아무내용없는 세션을 저장할지
     cookie: { secure: false } // HTTPS를 사용하는 경우 true로 설정 
 }));
+app.use(express.json()); //json을 통신할 수 있게 해주는 설정
+
+const pageAPI = require("./src/routers/page");
+const accountAPI = require("./src/routers/account");
+// const boardAPI = require("./src/routers/board");
+// const replyAPI = require("./src/routers/reply");
+app.use("/", pageAPI);
+app.use("/account", accountAPI);
+// app.use("/board", boardAPI);
+// app.use("/reply", replyAPI);
+
 
 // APIs
 //html은 왜 public에 넣었을까
-app.get("/", (req, res) => {    //requist, response
-    res.sendFile(`${__dirname}/public/index.html`); //__dirname (express의 기능: 현재까지의 절대경로)
-});
-app.get("/loginPage", (req, res) => {
-    res.sendFile(`${__dirname}/public/login.html`);
-});
-app.get("/userCreatePage", (req, res) => {
-    res.sendFile(`${__dirname}/public/userCreatePage.html`);
-});
-app.get("/userUpdatePage", (req, res) => {
-    res.sendFile(`${__dirname}/public/userUpdatePage.html`);
-});
-app.get("/boardListPage", (req, res) => {
-    res.sendFile(`${__dirname}/public/boardListPage.html`);
-});
-app.get("/boardCreatePage", (req, res) => {
-    res.sendFile(`${__dirname}/public/boardCreatePage.html`);
-});
-app.get("/boardReadPage", (req, res) => {
-    res.sendFile(`${__dirname}/public/boardReadPage.html`);
-});
+
 
 
 //@@@@@@@@@@@@@로그인
-app.get("/accounts/login", (req, res, next) => {       
-    try {
-        if (req.session.id) {
-            throw { status: 401, message: "already have session" };
-        }
-        const { id, password } = req.query;
-        if (id == null || password == null) {
-            throw { status: 400, message: "dont have query" };
-        }
+// restfull API
+// 복수형 쓰지 않기
+// 가독성 중시
+// 대문자 사용하지 않기 (idFind => idfind or find/id)
+// try 밖에 req받기
+// 400 프론트가 잘못 접근했을 때
 
-        //DB 통신
-
-        
-        const userName = "";
-        const userPhonenumber = "";
-        //
-        
-        req.session.id = id;
-        req.session.password = password;
-        req.session.name = userName;
-        req.session.phonenumber = userPhonenumber;
-    
-
-        //값 반환
-        const result = {
-            "message": "login success",
-            "data": null
-        };            
-        res.status(200).send(result);       
-    } catch (err) {
-        next(err);
-    }
-});
-
-//@@@@@@@@@@@@@@@로그아웃
-app.get("/accounts/logout", (req, res, next) => {             
-    try {
-        if (!req.session.id) {
-            throw { status: 401, message: "dont have id session" };
-        }        
-        const result = {
-            "message": "logout success",
-            "data": null
-        };
-        req.session.destroy();
-        res.status(200).send(result);        
-    } catch (err) {
-        next(err);
-    }
-});
-
-//@@@@@@@@@@@@@ 아이디 찾기
-app.get("/accounts/idFind", (req, res, next) => {    
-    try {
-        if (req.session.id) {
-            throw { status: 401, message: "already have session" };
-        }
-
-        const { name, phonenumber } = req.query;
-        if (!pattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            throw { status: 400, message: "regex fault" };
-        }
-
-        //DB 통신
-
-        
-        const foundId = "";
-        //
-
-        //값 반환
-
-        const result = {
-            "message": "find id success",
-            "data": { id: foundId }
-        };        
-        res.status(200).send(result);        
-    } catch (err) {
-        next(err);
-    }
-});
-
-app.get("/accounts/passwordFind", (req, res, next) => {
-    try {
-        if (req.session.id) {
-            throw { status: 401, message: "already have session" };
-        }
-
-        const { id, name, phonenumber } = req.query;
-        if (!pattern.test(id)||!pattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            throw { status: 400, message: "regex fault" };
-        }
-
-        //DB 통신
-
-        //
-        
-        const foundPassword = "";
-
-        //값 반환
-        const result = {
-            "message": "find password success",
-            "data": { password: foundPassword }
-        };        
-        res.status(200).send(result);        
-    } catch (err) {
-        next(err);
-    }
-});
-
-
-//===============================회원정보========================================
-
-//회원정보 열람
-// 내정보만 보는데 파라미터가 필요한가
-app.get("/account/:id", (req, res, next) => {
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have id session" };
-        }        
-        const { id } = req.params;
-        if (id == null) {
-            throw { status: 400, message: "dont have params " };
-        }
-        if (id != req.session.id ) {
-            throw { status: 401, message: "dont have permision " };
-        }
-        const userId = id;
-        const userPassword = req.session.password;
-        const userName = req.session.name;
-        const userPhonenumber = req.session.phonenumber;
-        if (userId == null || userPassword == null || userName == null || userPhonenumber == null) {
-            throw { status: 400, message: "dont have session" };
-        }    
-        
-        //DB 
-        //
-
-        //값 반환
-        const result = {
-            "message": "account get success",
-            "data": { id: userId, password: userPassword, name: userName, phonenumber: userPhonenumber }
-        };        
-        res.status(200).send(result);    
-    } catch (err) {
-        next(err);
-    }
-});
-
-// post/account 회원가입
-app.post("/account", (req, res, next) => { 
-    try {
-        if (req.session.id) {
-            throw { status: 401, message: "already have session" };
-        }
-
-        const { id, password, passwordCheck, name, phonenumber } = req.query;
-        if (id == null || password == null || passwordCheck == null || name == null || phonenumber == null) {
-            throw { status: 400, message: "dont have query" };
-        }     
-        if (!pattern.test(id) || !pattern.test(password) || !pattern.test(passwordCheck) ||  !pattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            throw { status: 400, message: "regex fault" };
-        }
-        if (password != passwordCheck) {
-            throw { status: 400, message: "password exception fault" };
-        }
-        //DB 통신
-
-        //값 반환
-        const result = {
-            "message": "Got a Post request at /account",
-            "data": null
-        };
-        res.status(200).send(result);  
-        
-    } catch (err) {
-        next(err);
-    }
-});
-
-// put/account/1 회원정보 수정
-app.put("/account/:id", (req, res, next) => {
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }      
-        const { id } = req.params;
-        if (id == null) {
-            throw { status: 400, message: "dont have params" };
-        }
-        if (id != req.session.id) {
-            throw { status: 401, message: "dont have permision" };
-        }        
-        const { password, passwordCheck, name, phonenumber } = req.query;
-        if ( password == null || passwordCheck == null || name == null || phonenumber == null) {
-            throw { status: 400, message: "dont have query" };
-        }           
-        if ( !pattern.test(password) || !pattern.test(passwordCheck) ||  !pattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            throw { status: 400, message: "regex fault" };
-        }
-        if (password != passwordCheck) {
-            throw { status: 400, message: "password exception fault" };
-        }
-        //DB 통신
-        //
-
-
-        //값 반환
-        const result = {
-            "message": `Got a PUT request at /account/${id}`,
-            "data": null
-        };        
-        res.status(200).send(result);          
-    } catch (err) {
-        next(err);
-    }
-});
-// delete/account/1 회원탈퇴
-app.delete("/account/:id", (req, res, next) => {
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }      
-
-        const { id } = req.params;    
-        if (id == null) {
-            throw { status: 400, message: "dont have params" };
-        }
-        if (id != req.session.id) {
-            throw { status: 401, message: "dont have permision" };
-        }  
-        //
-        //소프트딜리트 진행
-        //
-
-        const result = {
-            "message": `Got a DELETE request at /account/${id}`,
-            "data": null
-        }; 
-        res.status(200).send(result);          
-    } catch (err) {
-        next(err);
-    }
-});
 
 //===============================게시글=====================================
 // get/boards?page=1 게시글 목록 가져오기
@@ -563,6 +331,9 @@ app.post("/board/:uid/reply", (req, res, next) => {
     }
 });
 
+// 댓글 가져올 떄 굳이 board/reply 할 필요 없다.
+// => GET/reply
+
 // put/board/1/reply/1 댓글 수정
 app.put("/board/:boardUid/reply/:replyUid", (req, res, next) => {
     try {
@@ -637,18 +408,6 @@ app.delete("/board/:boardUid/reply/:replyUid", (req, res, next) => {
         res.status(200).send(result);             
     } catch (err) {
         next(err);
-    }
-});
-
-app.use((req, res, next) => {
-    res.status(404).send("cant find file");
-});
-app.use((err, req, res, next) => {
-    if (err && err.status) {
-        res.status(err.status).send(err.message);
-    }
-    else {
-        res.status(500).send("something wrong");
     }
 });
 
