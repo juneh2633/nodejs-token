@@ -25,9 +25,13 @@ router.get("/login", async(req, res, next) => {
             error.status = "401";
             throw error;
         }
-        
-        if (!pattern.test(id) || !pattern.test(password)) {
+        if (!id || !password) {
             const error = new Error("dont have query");
+            error.status = "400";
+            throw error;
+        }        
+        if (!pattern.test(id) || !pattern.test(password)) {
+            const error = new Error("regex fault");
             error.status = "400";
             throw error;
         }
@@ -43,7 +47,7 @@ router.get("/login", async(req, res, next) => {
                 }
             });
         });
-        if (queryResult && queryResult.length !== 0) {
+        if (queryResult && queryResult.length !== 0 && queryResult[0].user_deleted === 0) {
             result.message = "login success";
             req.session.userId = queryResult[0].id;
         }
@@ -109,7 +113,7 @@ router.get("/find/id", async(req, res, next) => {
             });
         });
 
-        if (queryResult && queryResult.length > 0) {
+        if (queryResult && queryResult.length > 0 &&queryResult[0].user_deleted === 0) {
             result.message = "id Found success";
             result.data = queryResult;
         }
@@ -153,7 +157,7 @@ router.get("/find/password", async(req, res, next) => {
             });           
         });
 
-        if (queryResult && queryResult.length !== 0) {
+        if (queryResult && queryResult.length !== 0 &&queryResult[0].user_deleted === 0) {
             result.message = "password Found success";
             result.data = queryResult;
         }
@@ -174,7 +178,7 @@ router.get("/find/password", async(req, res, next) => {
 router.get("/", async(req, res, next) => {
     const id = req.session.userId;
     const result = {
-        "message": "password not Found",
+        "message": "Get account request",
         "data": null
     };    
     try {
@@ -219,7 +223,7 @@ router.get("/", async(req, res, next) => {
 router.post("/", async(req, res, next) => { 
     const { id, password, passwordCheck, name, phonenumber } = req.query;
     const result = {
-        "message": "Got a Post request at ",
+        "message": "Got a Post request",
         "data": null
     };
     try {
@@ -272,62 +276,72 @@ router.post("/", async(req, res, next) => {
 
 // put/1 회원정보 수정
 // id 받을 필요가 없음
-router.put("/", (req, res, next) => {
+router.put("/", async(req, res, next) => {
+    const { password, passwordCheck, name, phonenumber } = req.query;
+    const result = {
+        "message": "Got a PUT request",
+        "data": null
+    };      
     try {
-        if (req.session.userId == null) {
-            throw { status: 401, message: "dont have session" };
-        }      
-        const id = req.session.userId;
-        if (id == null) {
-            throw { status: 400, message: "dont have params" };
-        }
-
-        const { password, passwordCheck, name, phonenumber } = req.query;
-        if ( password == null || passwordCheck == null || name == null || phonenumber == null) {
-            throw { status: 400, message: "dont have query" };
-        }           
-        if ( !pattern.test(password) || !pattern.test(passwordCheck) ||  !pattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            throw { status: 400, message: "regex fault" };
+        if (!req.session.userId) {
+            const error = new Error("dont have id session");
+            error.status = "401";
+            throw error;
+        }       
+        if ( !password || !passwordCheck || !name || !phonenumber) {
+            const error = new Error("dont have query");
+            error.status = "400";
+            throw error;
+        }       
+        if ( !pattern.test(password) || !pattern.test(passwordCheck) ||  !namePattern.test(name) || !phonenumberPattern.test(phonenumber)) {
+            const error = new Error("regex fault");
+            error.status = "400";
+            throw error;
         }
         if (password != passwordCheck) {
-            throw { status: 400, message: "password exception fault" };
+            const error = new Error("password exception fault");
+            error.status = "400";
+            throw error;
         }
-        //DB 통신
-        //
-
-
-        //값 반환
-        const result = {
-            "message": `Got a PUT request at /${id}`,
-            "data": null
-        };        
+        const sql = "UPDATE user SET password = ?, name = ?, phonenumber = ? WHERE id = ? ";
+        await new Promise((resolve, reject)=> {
+            db.query(sql, [password, name, phonenumber, req.session.userId], (err, results) => {
+                if (err) {
+                    reject(err);
+                }
+                resolve();
+            });
+        });
         res.status(200).send(result);          
     } catch (err) {
         next(err);
     }
 });
 // delete/1 회원탈퇴
-router.delete("/:id", (req, res, next) => {
+router.delete("/", async (req, res, next) => {  
+    const id = req.session.userId;
+    const result = {
+        "message": "Got a Delete request",
+        "data": null
+    };     
     try {
-        if (req.session.userId == null) {
-            throw { status: 401, message: "dont have session" };
-        }      
+        if (!id||id.length===0) {
+            const error = new Error("dont have id session");
+            error.status = 401;
+            throw error;
+        }         
 
-        const { id } = req.params;    
-        if (id == null) {
-            throw { status: 400, message: "dont have params" };
-        }
-        if (id != req.session.userId) {
-            throw { status: 401, message: "dont have permision" };
-        }  
-        //
-        //소프트딜리트 진행
-        //
+        const sql = "UPDATE user SET user_deleted = 1 WHERE id = ? ";
+        await new Promise((resolve, reject)=> {
+            db.query(sql, [req.session.userId], (err, results) => {
+                if (err) {
+                    reject(err);
+                }
+                resolve();
+            });
+        });
 
-        const result = {
-            "message": `Got a DELETE request at /${id}`,
-            "data": null
-        }; 
+        req.session.destroy();
         res.status(200).send(result);          
     } catch (err) {
         next(err);
