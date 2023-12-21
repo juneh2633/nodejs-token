@@ -9,6 +9,7 @@ router.get("/login", errors.haveSession, async (req, res, next) => {
     const integrityCheck = errors.queryCheck({ id, password });     //{id, password}로 넣는 이유: query에 다른 값이 들어갈 수 있어서 id, password로 바로 넣어줘야 검사할 수 있다.
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }
     const result = {
         message: "login fail"
@@ -53,6 +54,7 @@ router.get("/find/id", errors.haveSession, async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ name, phonenumber });
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }
     const result = {
         "message": "id not Found",
@@ -99,6 +101,7 @@ router.get("/find/password", errors.haveSession, async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ id, name, phonenumber });
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }
     const result = {
         "message": "password not Found",
@@ -176,6 +179,7 @@ router.post("/", errors.haveSession, async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ id, password, passwordCheck, name, phonenumber });
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }
     const result = {
         "message": "Got a Post request",
@@ -220,6 +224,7 @@ router.put("/", errors.leckSession, async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ password, passwordCheck, name, phonenumber });
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }
     const result = {
         "message": "Got a PUT request",

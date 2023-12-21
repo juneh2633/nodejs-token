@@ -12,6 +12,7 @@ router.get("/all", errors.leckSession, async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ page }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }    
     try {
 
@@ -58,6 +59,7 @@ router.get("/:uid", errors.leckSession, async (req, res, next) => {
     const integrityCheck = errors.queryCheck({ uid }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }       
     const result = {
         "message": "get board success",
@@ -94,6 +96,7 @@ router.post("/", errors.leckSession, async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ id, title, maintext }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }        
     const today = new Date();
     try {
@@ -118,10 +121,10 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {
     const { uid } = req.params;
     const { title, maintext } = req.query;
     const id = req.session.userId;
-    console.log(id);
     const integrityCheck = errors.queryCheck({ uid, title, maintext }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     }    
     const today = new Date();
     const result = {
@@ -132,9 +135,9 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {
         const permisionQueryResult = await new Promise((resolve, reject)=> {
             db.query(permisionSql, [uid, id], (err, results) => {
                 if (err) {
-                    reject(err);
+                    reject(err);    
                 }
-                resolve(result);
+                resolve(results);
             });
         });  
         if (!permisionQueryResult||permisionQueryResult.length === 0) {
@@ -143,7 +146,7 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {
             next(error);
         }  
         const sql = "UPDATE board SET title = ?, maintext = ?, board_update_time = ? WHERE board_uid = ?";
-        const queryResult = await new Promise((resolve, reject)=> {
+        await new Promise((resolve, reject)=> {
             db.query(sql, [title, maintext, today, uid], (err, results) => {
                 if (err) {
                     reject(err);
@@ -164,6 +167,7 @@ router.delete("/:uid", errors.leckSession,  async(req, res, next) => {
     const integrityCheck = errors.queryCheck({ uid }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
+        return;
     } 
     const today = new Date();
     const result = {
@@ -199,4 +203,4 @@ router.delete("/:uid", errors.leckSession,  async(req, res, next) => {
     
 });
 
-module.exports = router;// import
+module.exports = router;

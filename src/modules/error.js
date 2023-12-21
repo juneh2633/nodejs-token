@@ -27,6 +27,7 @@ const queryCheck = (query) => {
     for (let idx = 0; idx < list.length; idx++){
         if (!list[idx][1] || list[idx][1] === undefined) {
             error.message = `error occurs at ${list[idx][0]} , ${list[idx][0]} = [${list[idx][1]}]`;
+            console.log(list[idx][0],list[idx][1]);
             return { success: false, error: error };
         }
         if (!patternSelect(list[idx][0]).test(list[idx][1])) {
@@ -43,13 +44,7 @@ const queryCheck = (query) => {
     console.log("success");
     return { success: true, error: null };
 }
-// const pattern = /^[a-zA-Z0-9]{6,20}$/;
-// const namePattern = /^[a-zA-Z가-힣]{1,20}$/;
-// const phonenumberPattern = /^[0-9]{11}$/;
-// const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-// const titlePattern = /^.{1,30}$/;
-// const maintextPattern = /^.{1,5000}$/;
-// const replyPattern = /^.{1,500}$/;
+
 
 const patternSelect = (str) => {
     if (str === "id" || str === "password" || str === "passwordCheck") {
@@ -67,15 +62,13 @@ const patternSelect = (str) => {
     if (str === "maintext") {
         return /^.{1,5000}$/;
     }
-    if (str === "reply") {
+    if (str === "replyMain") {
         return /^.{1,500}$/;
     }
     if (str === "page"|| str === "uid" || str === "boardUid" || str === "replyUid") {
         return /^[0-9]{1,20}$/;
     }
-    
-
-    return /^.{1}$/
+    return /^[0]{9999999}$/
 }
 module.exports.haveSession = haveSession;
 module.exports.leckSession = leckSession;
