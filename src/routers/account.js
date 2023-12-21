@@ -3,15 +3,6 @@ const path = require("path");
 const db = require("../modules/database");
 const errors = require("../modules/error");
 
-const pattern = /^[a-zA-Z0-9]{6,30}$/
-const namePattern = /^[a-zA-Z가-힣]{1,30}$/;
-const phonenumberPattern = /^[0-9]{11}$/
-const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-const titlePattern = /^.{1,50}$/;
-const maintextPattern = /^.{1,5000}$/;
-const replyPattern = /^.{1,500}$/;
-
-
 router.get("/login", errors.haveSession, async (req, res, next) => {
  
     const { id, password } = req.query;
@@ -56,7 +47,6 @@ router.get("/logout", errors.leckSession, (req, res, next) => {
         next(err);
     }
 });
-
 
 router.get("/find/id", errors.haveSession, async(req, res, next) => {   
     const { name, phonenumber } = req.query;
@@ -192,17 +182,6 @@ router.post("/", errors.haveSession, async(req, res, next) => {
         "data": null
     };
     try {
-        if (!pattern.test(id) || !pattern.test(password) || !pattern.test(passwordCheck) ||  !namePattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            const error = new Error("regex fault");
-            error.status = "400";
-            throw error;
-        }
-        if (password != passwordCheck) {
-            const error = new Error("password exception fault");
-            error.status = "400";
-            throw error;
-        }
-
         const doubleCheckSql = "SELECT * FROM user WHERE id = ?";
         const doubleCheckQueryResult =  await new Promise((resolve, reject)=> {
             db.query(doubleCheckSql, [id], (err, results) => {
@@ -234,30 +213,19 @@ router.post("/", errors.haveSession, async(req, res, next) => {
     }
 });
 
-// put/1 회원정보 수정
-// id 받을 필요가 없음
+// put/ 회원정보 수정
+
 router.put("/", errors.leckSession, async(req, res, next) => {
     const { password, passwordCheck, name, phonenumber } = req.query;
+    const integrityCheck = errors.queryCheck({ password, passwordCheck, name, phonenumber });
+    if (!integrityCheck.success) {
+        next(integrityCheck.error);
+    }
     const result = {
         "message": "Got a PUT request",
         "data": null
     };      
     try { 
-        if ( !password || !passwordCheck || !name || !phonenumber) {
-            const error = new Error("dont have query");
-            error.status = "400";
-            throw error;
-        }       
-        if ( !pattern.test(password) || !pattern.test(passwordCheck) ||  !namePattern.test(name) || !phonenumberPattern.test(phonenumber)) {
-            const error = new Error("regex fault");
-            error.status = "400";
-            throw error;
-        }
-        if (password != passwordCheck) {
-            const error = new Error("password exception fault");
-            error.status = "400";
-            throw error;
-        }
         const sql = "UPDATE user SET password = ?, name = ?, phonenumber = ? WHERE id = ? ";
         await new Promise((resolve, reject)=> {
             db.query(sql, [password, name, phonenumber, req.session.userId], (err, results) => {
@@ -272,6 +240,7 @@ router.put("/", errors.leckSession, async(req, res, next) => {
         next(err);
     }
 });
+
 // delete/1 회원탈퇴
 router.delete("/", errors.leckSession, async (req, res, next) => {  
     const id = req.session.userId;
@@ -298,15 +267,3 @@ router.delete("/", errors.leckSession, async (req, res, next) => {
 });
 
 module.exports = router;// import
-
-
-//db 연결 후 api 실행  (promise)
-//
-// +------------+--------+----------+-------------+---------------------+--------------+
-// | id         | name   | password | phonenumber | user_create_date    | user_deleted |
-// +------------+--------+----------+-------------+---------------------+--------------+
-// | deletetest | test   | 12341234 | 01011112222 | 2023-12-20 13:46:36 |            1 |
-// | test1234   | juneh  | 12341234 | 01085490120 | 2023-12-19 08:19:06 |            0 |
-// | test2222   | change | 12341234 | 01011112222 | 2023-12-19 23:34:41 |            0 |
-// | test3333   | test   | 12341234 | 01011112222 | 2023-12-19 23:16:33 |            0 |
-// +------------+--------+----------+-------------+---------------------+--------------+

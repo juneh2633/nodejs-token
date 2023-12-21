@@ -220,7 +220,7 @@ app.delete("/board/:boardUid/reply/:replyUid", (req, res, next) => {
 
 app.use((err, req, res, next) => {
     if (err.status === 500) {
-        res.status(err.status).send("500 error, something wrong");   
+        res.status(500).send("500 error, something wrong");   
     }
     else {
         res.status(err.status).send(err.message);           
