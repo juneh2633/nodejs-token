@@ -7,19 +7,7 @@ const mysql = require("mysql");
     // Init
 const app = express();
 const port = 8001;
-const db = mysql.createConnection({
-    host: "localhost",
-    user: 'juneh',
-    password: '2633',
-    database: 'nodejs_study'
-});
-db.connect(err => {
-    if (err) {
-        console.error('Database connection failed: ' + err.stack);
-        return;
-    }
-    console.log('Connected to database.');
-});
+
     //pattern
 const pattern = /^[a-zA-Z0-9]{6,30}$/
 const namePattern = /^[a-zA-Z가-힣]{1,30}$/;
@@ -42,11 +30,11 @@ app.use(express.json()); //json을 통신할 수 있게 해주는 설정
 
 const pageAPI = require("./src/routers/page");
 const accountAPI = require("./src/routers/account");
-// const boardAPI = require("./src/routers/board");
+const boardAPI = require("./src/routers/board");
 // const replyAPI = require("./src/routers/reply");
 app.use("/", pageAPI);
 app.use("/account", accountAPI);
-// app.use("/board", boardAPI);
+app.use("/board", boardAPI);
 // app.use("/reply", replyAPI);
 
 
@@ -64,189 +52,6 @@ app.use("/account", accountAPI);
 // 400 프론트가 잘못 접근했을 때
 
 
-//===============================게시글=====================================
-// get/boards?page=1 게시글 목록 가져오기
-app.get("/boards", (req, res, next) => {  
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }      
-        const { page } = req.query;
-        if (page == null) {
-            throw { status: 400, message: "dont have query" };
-        }                
-
-        let boards = [];
-
-        //
-        const countQuery = "SELECT COUNT(*) FROM board WHERE board_deleted = 0";
-        const boardsCount = 100; //db로 받을 값 예시
-        let pageSize = 10;
-        if (boardsCount < parseInt(page) * pageSize) {
-            pageSize = 10 - parseInt(page) * pageSize + boardsCount;
-        }
-        const query = `SELECT * FROM board WHERE board_deleted = 0 LIMIT ${pageSize} OFFSET ${ parseInt(page) * 10}`;
-
-        //db
-
-        for (let idx = 0; idx < pageSize; idx++){
-            const board = {
-                boardUid: 'boardUid',
-                id: 'id',
-                title: 'title',
-                boardCreateDate: '2023-12-12',  //db로 받을 값 예시
-            };
-            boards.push(board);
-        }
-
-        //
-        const result = {
-            "message": "get boards success",
-            "data":  boards
-        };      
-        res.status(200).send(result);          
-    } catch (err) {
-        next(err);
-    }    
-});
-
-// get/board/1 특정 게시글 가져오기
-app.get("/board/:uid", (req, res, next) => {
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }    
-        
-        const { uid } = req.params;
-        if (uid == null) {
-            throw { status: 400, message: "dont have params" };
-        }    
-        //
-        const query = `SELECT * FROM board WHERE board_uid = ${uid}`;
-
-        //db통신
-        //
-    
-        const board = {
-            boardUid: 'boardUid',
-            id: 'id',
-            title: 'title',
-            maintext: 'maintext',
-            boardCreateDate: '2023-12-12',
-        };    
-
-        //
-        const result = {
-            "message": "get board success",
-            "data":  board
-        };      
-        res.status(200).send(result);          
-    } catch (err) {
-        next(err);
-    }
-});
-
-// post/board 게시글 쓰기
-app.post("/board", (req, res, next) => {  
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }    
-        
-
-        const { id, title, maintext } = req.query;
-        if (id == null || title == null || maintext == null) {
-            throw { status: 400, message: "dont have query" };
-        }           
-        if ( !titlePattern.test(title) || !maintextPattern.test(maintext)) {
-            throw { status: 400, message: "regex fault" };
-        }
-
-        //DB 통신
-        let today = "2023-12-12";//날짜 db로 불러오기
-        const query = `INSERT INTO boards( id, title, maintext, board_create_date , board_deleted) VALUES (${ id }, ${ title }, ${ maintext }, ${ today }, 0)`
-        
-
-        const result = {
-            "message": "Got a POST requst at /board",
-            "data":  null
-        };      
-        res.status(200).send(result);        
-    } catch (err) {
-        next(err);
-    }
-
-});
-// put/board/1   게시글 수정
-app.put("/board/:uid", (req, res, next) => {
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }   
-        
-        const { uid } = req.params;
-        if (uid == null) {
-            throw { status: 400, message: "dont have params" };
-        }
-        const { title, maintext } = req.query;
-        if ( title == null || maintext == null) {
-            throw { status: 400, message: "dont have query" };
-        }             
-
-        //DB 통신
-        const permisionQuery = `SELECT * FROM board WHERE board_uid = ${uid}`;
-        const id = "";  //게시글 작성자 불러오기
-        if (id != req.session.id) {
-            throw { status: 401, message: "dont have permision" };
-        }  
-        const query = `UPDATE board SET title = ${title}, maintext = ${maintext} WHERE board_uid = ${uid}`;
-
-
-
-        const result = {
-            "message": `Got a PUT request at /board/${uid}`,
-            "data": null
-        };
-        res.status(200).send(result);             
-    } catch (err) {
-        next(err);
-    }
-   
-});
-
-// delete/board/1 게시글 삭제
-app.delete("/board/:uid", (req, res, next) => {
-    try {
-        if (req.session.id == null) {
-            throw { status: 401, message: "dont have session" };
-        }    
-
-        const { uid } = req.params;
-        if (uid == null) {
-            throw { status: 400, message: "dont have params" };
-        }
-
-        //DB 통신
-        const permisionQuery = `SELECT * FROM board WHERE board_uid = ${uid}`;
-        const id = "";  //게시글 작성자 불러오기
-        if (id != req.session.id) {
-            throw { status: 401, message: "dont have permision" };
-        }  
-        const query = `UPDATE board SET board_deleted = 1 WHERE board_uid = ${uid}`;
-
-        
-        //DB 통신 결과 처리
-        const result = {
-            "message": `Got a DELETE request at /board/${uid}`,
-            "data": null
-        };
-        //값 반환
-        res.status(200).send(result);            
-    } catch (err) {
-        next(err);
-    }
-    
-});
 
 //============================댓글====================================
 
@@ -414,7 +219,12 @@ app.delete("/board/:boardUid/reply/:replyUid", (req, res, next) => {
 //================================================================================
 
 app.use((err, req, res, next) => {
-    res.status(err.status).send(err.message);     
+    if (err.status === 500) {
+        res.status(err.status).send("500 error, something wrong");   
+    }
+    else {
+        res.status(err.status).send(err.message);           
+    }
 });
 //Web Server
     
