@@ -8,7 +8,6 @@ const mysql = require("mysql");
 const app = express();
 const port = 8001;
 
-
 app.use(session({
     secret: "juneh2633",
     resave: false,  //변경이 없는 경우에도 다시 저장할지(매 request마다)
@@ -49,7 +48,7 @@ app.use((req, res, next) => {
 
 
 app.use((err, req, res, next) => {
-    if (err.status !== 500) {
+    if (err.status) {
         res.status(err.status).send(err.message);     
     }
     else {

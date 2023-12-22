@@ -12,5 +12,17 @@ db.connect(err => {
     }
     console.log('Connected to database.');
 });
+function queryPromise(sql, params){
+    return new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(results);
+            }
+        });
+    });
+}
 
 module.exports = db;
+module.exports.queryPromise = queryPromise;

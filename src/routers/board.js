@@ -9,44 +9,33 @@ const errors = require("../modules/error");
 router.get("/all", errors.leckSession, async(req, res, next) => {  
     const { page } = req.query;
     const pageSizeOption = 10;
+
     const integrityCheck = errors.queryCheck({ page }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
         return;
     }    
+
     try {
 
         const countSql = "SELECT COUNT(*) FROM board WHERE board_deleted = 0";
-        const countQueryResult = await new Promise((resolve, reject)=> {
-            db.query(countSql, [], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve(results);
-            });
-        });  
+        const countQueryResult = await db.queryPromise(countSql, [])
  
         const boardsCount = parseInt(countQueryResult[0]['COUNT(*)']);
-        console.log(boardsCount);
         if (boardsCount < (parseInt(page)-1) * pageSizeOption) {   
             const error = new Error("board not Found ");
             error.status = 404;
             next(error);            
         }
+
         const sql = "SELECT * FROM board WHERE board_deleted = 0 LIMIT ? OFFSET ?";
-        const queryResult = await new Promise((resolve, reject)=> {
-            db.query(sql, [pageSizeOption, (parseInt(page)-1) * pageSizeOption ], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve(results);
-            });
-        });  
+        const queryResult = await db.queryPromise(sql, [pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
 
         const result = {
             "message": "get boards success",
             "data":  queryResult
         };      
+
         res.status(200).send(result);          
     } catch (err) {
         next(err);
@@ -56,25 +45,20 @@ router.get("/all", errors.leckSession, async(req, res, next) => {
 // get/1 특정 게시글 가져오기
 router.get("/:uid", errors.leckSession, async (req, res, next) => {
     const { uid } = req.params;
+
     const integrityCheck = errors.queryCheck({ uid }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
         return;
     }       
+
     const result = {
         "message": "get board success",
         "data": null
     };      
     try {
         const sql = "SELECT * FROM board WHERE board_uid = ? AND board_deleted = 0";
-        const queryResult = await new Promise((resolve, reject)=> {
-            db.query(sql, [uid], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve(results);
-            });
-        });  
+        const queryResult = await db.queryPromise(sql, [uid]);
 
         if (!queryResult || queryResult.length === 0) {
             const error = new Error("board not Found");
@@ -92,23 +76,19 @@ router.get("/:uid", errors.leckSession, async (req, res, next) => {
 // post 게시글 쓰기
 router.post("/", errors.leckSession, async(req, res, next) => {  
     const id = req.session.userId;
-    const { title, maintext } = req.query;    
+    const { title, maintext } = req.query; 
+    
     const integrityCheck = errors.queryCheck({ id, title, maintext }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
         return;
     }        
+
     const today = new Date();
+
     try {
         const sql = "INSERT INTO board( id, title, maintext, board_update_time , board_deleted) VALUES (? , ? , ?, ?, 0)"
-        await new Promise((resolve, reject)=> {
-            db.query(sql, [id, title, maintext, today], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve();
-            });
-        });        
+        await db.queryPromise(sql, [id, title, maintext, today]);
 
         res.status(200).send({ "message": "Got a POST requst at /board" });
     } catch (err) {
@@ -121,39 +101,29 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {
     const { uid } = req.params;
     const { title, maintext } = req.query;
     const id = req.session.userId;
+
     const integrityCheck = errors.queryCheck({ uid, title, maintext }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
         return;
     }    
+
     const today = new Date();
     const result = {
         "message": `Got a PUT request at board/${uid}`
     };
+
     try {
         const permisionSql = "SELECT * FROM board WHERE board_uid = ? AND id = ?";
-        const permisionQueryResult = await new Promise((resolve, reject)=> {
-            db.query(permisionSql, [uid, id], (err, results) => {
-                if (err) {
-                    reject(err);    
-                }
-                resolve(results);
-            });
-        });  
+        const permisionQueryResult = await db.queryPromise(permisionSql, [uid, id]);
         if (!permisionQueryResult||permisionQueryResult.length === 0) {
             const error = new Error("dont have permision or board not Found");
             error.status = 401;     
             next(error);
         }  
         const sql = "UPDATE board SET title = ?, maintext = ?, board_update_time = ? WHERE board_uid = ?";
-        await new Promise((resolve, reject)=> {
-            db.query(sql, [title, maintext, today, uid], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve(results);
-            });
-        });  
+        await db.queryPromise(sql, [title, maintext, today, uid]);
+
         res.status(200).send(result);             
     } catch (err) {
         next(err);
@@ -164,39 +134,33 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {
 // delete/1 게시글 삭제
 router.delete("/:uid", errors.leckSession,  async(req, res, next) => {
     const { uid } = req.params;
+
     const integrityCheck = errors.queryCheck({ uid }); 
     if (!integrityCheck.success) {
         next(integrityCheck.error);
         return;
     } 
+
     const today = new Date();
     const result = {
         "message": `Got a DELETE request at /${uid}`,
     };
+
     try {
         const permisionSql = "SELECT * FROM board WHERE board_uid = ? AND id = ?";
-        const permisionQueryResult = await new Promise((resolve, reject)=> {
-            db.query(permisionSql, [uid, id], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve(result);
-            });
-        });  
+        const permisionQueryResult = await db.queryPromise(permisionSql, [uid, id]);
+
         if (!permisionQueryResult||permisionQueryResult.length === 0) {
             const error = new Error("dont have permision");
             error.status = 401;     
             next(error);
         }  
+
         const sql = "UPDATE board SET board_update_time = ?, bord_deleted = 1 WHERE board_uid = ?";
-        const queryResult = await new Promise((resolve, reject)=> {
-            db.query(sql, [today, uid], (err, results) => {
-                if (err) {
-                    reject(err);
-                }
-                resolve(results);
-            });
-        });          
+        const queryResult = await db.queryPromise(sql, [today, uid]);     
+
+        res.status(200).send(result); 
+
     } catch (err) {
         next(err);
     }
