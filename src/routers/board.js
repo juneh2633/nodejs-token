@@ -2,11 +2,18 @@ const router = require("express").Router();
 const path = require("path"); 
 const db = require("../modules/database");
 const errors = require("../modules/error");
+const sessionCheck = require("../modules/session-check");
+
+/////////-----board---------///////////
+//  GET/all?page        =>게시글 목록 가져오기(pagenation)
+//  GET/:uid            =>게시글 가져오기
+//  POST/               =>게시글 작성
+//  PUT/:uid            =>게시글 수정
+//  DELETE/:uid         =>게시글 삭제
+///////////////////////////////////////////
 
 
-//===============================게시글=====================================
-// gets?page=1 게시글 목록 가져오기
-router.get("/all", errors.leckSession, async(req, res, next) => {  
+router.get("/all", sessionCheck.have, async(req, res, next) => {  
     const { page } = req.query;
     const pageSizeOption = 10;
 
@@ -42,8 +49,8 @@ router.get("/all", errors.leckSession, async(req, res, next) => {
     }    
 });
 
-// get/1 특정 게시글 가져오기
-router.get("/:uid", errors.leckSession, async (req, res, next) => {
+
+router.get("/:uid", sessionCheck.have, async (req, res, next) => {
     const { uid } = req.params;
 
     const integrityCheck = errors.queryCheck({ uid }); 
@@ -74,7 +81,7 @@ router.get("/:uid", errors.leckSession, async (req, res, next) => {
 });
 
 // post 게시글 쓰기
-router.post("/", errors.leckSession, async(req, res, next) => {  
+router.post("/", sessionCheck.have, async(req, res, next) => {  
     const id = req.session.userId;
     const { title, maintext } = req.query; 
     
@@ -97,7 +104,7 @@ router.post("/", errors.leckSession, async(req, res, next) => {
 
 });
 // put/1   게시글 수정
-router.put("/:uid", errors.leckSession, async (req, res, next) => {
+router.put("/:uid", sessionCheck.have, async (req, res, next) => {
     const { uid } = req.params;
     const { title, maintext } = req.query;
     const id = req.session.userId;
@@ -132,7 +139,7 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {
 });
 
 // delete/1 게시글 삭제
-router.delete("/:uid", errors.leckSession,  async(req, res, next) => {
+router.delete("/:uid", sessionCheck.have,  async(req, res, next) => {
     const { uid } = req.params;
 
     const integrityCheck = errors.queryCheck({ uid }); 

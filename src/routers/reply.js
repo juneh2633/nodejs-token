@@ -2,21 +2,18 @@ const router = require("express").Router();
 const path = require("path"); 
 const db = require("../modules/database");
 const errors = require("../modules/error");
-function query(sql, params){
-    return new Promise((resolve, reject) => {
-        db.query(sql, params, (err, results) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(results);
-            }
-        });
-    });
-}
+const sessionCheck = require("../modules/session-check");
 
+/////////-----reply---------///////////                     uid
+//  GET/:uid?page           =>댓글 가져오기(pagenation)      board_uid
+//  POST/:uid               =>댓글 작성                     board_uid
+//  PUT/:uid                =>댓글 수정                     reply_uid       
+//  DELETE/:uid             =>댓글 삭제                     reply_uid
+////////////////////////////////////////////////////////////////////
+//board_uid를 줄 떄, REST적으로 맞지 않으므로 query로 주는게 낫다.
 
 // get/reply/:uid/?page 게시글의 댓글 목록 가져오기
-router.get("/:uid", errors.leckSession, async(req, res, next) => {  //board의 uid
+router.get("/:uid", sessionCheck.have, async(req, res, next) => {  //board의 uid
     const { uid } = req.params;
     const { page } = req.query;
     const pageSizeOption = 10;
@@ -33,7 +30,7 @@ router.get("/:uid", errors.leckSession, async(req, res, next) => {  //board의 u
 
     try {
         const boardSql = "SELECT * FROM board WHERE board_uid = ? AND board_deleted = 0";
-        const boardQueryResult = await db.queryPromise(boardSql, [uid]);  
+        const boardQueryResult = await db.queryPromise(boardSql, [uid]);    //굳이??
 
         if (!boardQueryResult || boardQueryResult.length === 0) {
             const error = new Error("board not Found ");
@@ -63,7 +60,7 @@ router.get("/:uid", errors.leckSession, async(req, res, next) => {  //board의 u
 });
 
 // post/reply/:uid 댓글 쓰기
-router.post("/:uid", errors.leckSession, async(req, res, next) => {     //board의 uid
+router.post("/:uid", sessionCheck.have, async(req, res, next) => {     //board의 uid
     const { uid } = req.params;
     const { replyMain } = req.query;
     const id = req.session.userId;
@@ -87,8 +84,8 @@ router.post("/:uid", errors.leckSession, async(req, res, next) => {     //board�
 });
 
 
-// put/board/1/reply/1 댓글 수정
-router.put("/:uid", errors.leckSession, async (req, res, next) => {    //reply uid
+// 
+router.put("/:uid", sessionCheck.have, async (req, res, next) => {    //reply uid
     const { uid } = req.params;
     const { replyMain } = req.query;    
     const id = req.session.userId;
@@ -124,7 +121,7 @@ router.put("/:uid", errors.leckSession, async (req, res, next) => {    //reply u
 });
 
 // delete /댓글 삭제
-router.delete("/:uid",  errors.leckSession, async(req, res, next) => {    //reply uid
+router.delete("/:uid",  sessionCheck.have, async(req, res, next) => {    //reply uid
     const { uid } = req.params;
     const { replyMain } = req.query;
     const integrityCheck = errors.queryCheck({ uid, replyMain }); 
