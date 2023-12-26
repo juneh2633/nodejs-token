@@ -21,16 +21,16 @@ app.use("/", pageAPI);
 const accountAPI = require("./src/routers/account");
 app.use("/account", accountAPI);
 
-// const boardAPI = require("./src/routers/board");
-// app.use("/board", boardAPI);
+const boardAPI = require("./src/routers/board");
+app.use("/board", boardAPI);
 
-// const replyAPI = require("./src/routers/reply");
-// app.use("/reply", replyAPI);
+const replyAPI = require("./src/routers/reply");
+app.use("/reply", replyAPI);
 
 // 404에러는 자동으로 처리해준다.
-app.use((req, res, next) => {
-    res.status(404).send("NOT FOUND API");
-});
+// app.use((req, res, next) => {
+//     res.status(404).send("NOT FOUND API");
+// });
 
 app.use((err, req, res, next) => {
     if (err.status) {

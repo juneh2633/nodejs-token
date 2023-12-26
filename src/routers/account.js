@@ -4,6 +4,8 @@ const pgPool = require("../modules/pgPool");
 const loginAuth = require("../middleware/loginAuth");
 const logoutAuth = require("../middleware/logoutAuth");
 const queryCheck = require("../modules/queryCheck");
+const pwHash = require("../modules/pwHash");
+const pwCompare = require("../modules/pwComapre");
 /////////-----account---------///////////
 //  GET/login           => 로그인
 //  GET/logout          =>로그아웃
@@ -23,12 +25,16 @@ router.get("/login", logoutAuth, async (req, res, next) => {
 
     try {
         queryCheck({ id, password });
-
-        const sql = "SELECT * FROM account WHERE id = $1 AND password = $2 AND account_deleted = false";
-        const queryResult = await pgPool.query(sql, [id, password]);
+        const sql = "SELECT * FROM account WHERE id = $1  AND account_deleted = false";
+        const queryResult = await pgPool.query(sql, [id]);
         if (queryResult.rows.length !== 0) {
-            result.message = "login success";
-            req.session.userId = queryResult.rows[0].id;
+            const match = await pwCompare(password, queryResult.rows[0].password);
+            console.log("로그인>>");
+
+            if (match) {
+                result.message = "login success";
+                req.session.userId = queryResult.rows[0].id;
+            }
         }
         res.status(200).send(result);
     } catch (err) {
@@ -55,12 +61,12 @@ router.get("/find/id", logoutAuth, async (req, res, next) => {
     try {
         queryCheck({ name, phonenumber });
 
-        const sql = "SELECT id FROM account WHERE name = $1 AND phonenumber = $2 AND account_deleted = 0";
+        const sql = "SELECT id FROM account WHERE name = $1 AND phonenumber = $2 AND account_deleted = false";
         const queryResult = await pgPool.query(sql, [name, phonenumber]);
 
         if (queryResult.rows.length > 0) {
             result.message = "id Found success";
-            result.data = queryResult;
+            result.data = queryResult.rows[0].id;
         }
 
         res.status(200).send(result);
@@ -79,14 +85,13 @@ router.get("/find/password", logoutAuth, async (req, res, next) => {
     try {
         queryCheck({ id, name, phonenumber });
 
-        const sql = `SELECT password FROM account 
-                     WHERE id = $1 AND name = $2 AND phonenumber = $3 AND account_deleted = 0`;
+        const sql = `SELECT password FROM account WHERE id = $1 AND name = $2 AND phonenumber = $3 AND account_deleted = false`;
         const queryResult = await pgPool.query(sql, [id, name, phonenumber]);
 
         if (queryResult.rows.length !== 0) {
             console.log;
             result.message = "password Found success";
-            result.data = queryResult;
+            result.data = queryResult.rows[0].password; //해시된 값 출력
         }
 
         res.status(200).send(result);
@@ -105,13 +110,13 @@ router.get("/", loginAuth, async (req, res, next) => {
     };
 
     try {
-        const sql = "SELECT * FROM account WHERE id = ?";
+        const sql = "SELECT * FROM account WHERE id = $1";
         const queryResult = await pgPool.query(sql, [id]);
 
         if (queryResult && queryResult.rows.length !== 0) {
             result.data = {
                 id: queryResult.rows[0].id,
-                password: queryResult.rows[0].password,
+                //password: queryResult.rows[0].password,
                 name: queryResult.rows[0].name,
                 phonenumber: queryResult.rows[0].phonenumber,
             };
@@ -128,7 +133,6 @@ router.get("/", loginAuth, async (req, res, next) => {
 });
 
 // post 회원가입
-
 router.post("/", logoutAuth, async (req, res, next) => {
     const { id, password, passwordCheck, name, phonenumber } = req.query;
 
@@ -138,7 +142,8 @@ router.post("/", logoutAuth, async (req, res, next) => {
 
     try {
         queryCheck({ id, password, passwordCheck, name, phonenumber });
-
+        const pwHashed = await pwHash(password);
+        console.log("hash 성공");
         const doubleCheckSql = "SELECT * FROM account WHERE id = $1";
         const doubleCheckQueryResult = await pgPool.query(doubleCheckSql, [id]);
 
@@ -147,9 +152,11 @@ router.post("/", logoutAuth, async (req, res, next) => {
             error.status = "400";
             throw error;
         }
-
-        const sql = "INSERT INTO account (id, password, name, phonenumber, account_deleted) VALUES ($1, $2, $3, $4, 0)";
-        await pgPool.query(sql, [id, password, name, phonenumber]);
+        console.log("중복확인 성공");
+        console.log(pwHashed);
+        const sql = "INSERT INTO account (id, name, password, phonenumber, account_deleted) VALUES ($1, $2, $3, $4, false)";
+        await pgPool.query(sql, [id, name, pwHashed, phonenumber]);
+        console.log("가입성공");
 
         res.status(200).send(result);
     } catch (err) {
@@ -169,9 +176,9 @@ router.put("/", loginAuth, async (req, res, next) => {
 
     try {
         queryCheck({ password, passwordCheck, name, phonenumber });
-
+        const pwHashed = await pwHash(password);
         const sql = "UPDATE account SET password = $1, name = $2, phonenumber = $3 WHERE id = $4 ";
-        await pgPool.query(sql, [password, name, phonenumber, id]);
+        await pgPool.query(sql, [pwHashed, name, phonenumber, id]);
 
         res.status(200).send(result);
     } catch (err) {
@@ -187,7 +194,7 @@ router.delete("/", loginAuth, async (req, res, next) => {
     };
 
     try {
-        const sql = "UPDATE account SET account_deleted = 1 WHERE id = $1 ";
+        const sql = "UPDATE account SET account_deleted = true WHERE id = $1 ";
         await pgPool.query(sql, [id]);
 
         req.session.destroy();

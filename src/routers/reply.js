@@ -1,154 +1,120 @@
 const router = require("express").Router();
-const path = require("path"); 
-const db = require("../modules/database");
-const errors = require("../modules/error");
-const sessionCheck = require("../modules/session-check");
-
+const path = require("path");
+const pgPool = require("../modules/pgPool");
+const loginAuth = require("../middleware/loginAuth");
+const queryCheck = require("../modules/queryCheck");
 /////////-----reply---------///////////                     uid
 //  GET/:uid?page           =>댓글 가져오기(pagenation)      board_uid
 //  POST/:uid               =>댓글 작성                     board_uid
-//  PUT/:uid                =>댓글 수정                     reply_uid       
+//  PUT/:uid                =>댓글 수정                     reply_uid
 //  DELETE/:uid             =>댓글 삭제                     reply_uid
 ////////////////////////////////////////////////////////////////////
 //board_uid를 줄 떄, REST적으로 맞지 않으므로 query로 주는게 낫다.
 
 // get/reply/:uid/?page 게시글의 댓글 목록 가져오기
-router.get("/:uid", sessionCheck.have, async(req, res, next) => {  //board의 uid
-    const { uid } = req.params;
-    const { page } = req.query;
+router.get("/", loginAuth, async (req, res, next) => {
+    //board의 uid
+    const id = req.session.userId;
+    const { uid, page } = req.query;
     const pageSizeOption = 10;
 
-    const integrityCheck = errors.queryCheck({ uid, page }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }    
     const result = {
-        "message": "get replies success",
-        "data": null
-    };      
+        message: "get replies success",
+        data: null,
+    };
 
     try {
-        const boardSql = "SELECT * FROM board WHERE board_uid = ? AND board_deleted = 0";
-        const boardQueryResult = await db.queryPromise(boardSql, [uid]);    //굳이??
+        queryCheck({ uid, page });
 
-        if (!boardQueryResult || boardQueryResult.length === 0) {
-            const error = new Error("board not Found ");
-            error.status = 404;
-            next(error);     
+        const sql = "SELECT * FROM reply WHERE reply_deleted = false AND board_uid = $1 ORDER BY reply_uid LIMIT $2 OFFSET $3";
+        let queryResult = await pgPool.query(sql, [uid, pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
+        if (!queryResult || queryResult.rows.length === 0) {
+            result.message = "no reply";
         }
+        queryResult.rows.forEach((elem) => {
+            if (elem.id === id) {
+                elem.editable = true;
+            } else {
+                elem.editable = false;
+            }
+        });
 
-        const countSql = "SELECT COUNT(*) FROM reply WHERE reply_deleted = 0 AND board_uid = ?";
-        const countQueryResult = await db.queryPromise(countSql, [uid]);
-        
-        const replyCount = parseInt(countQueryResult[0]['COUNT(*)']);
-        if (replyCount < (parseInt(page)-1) * pageSizeOption) {   
-            const error = new Error("reply not Found ");
-            error.status = 404;
-            next(error);            
-        }
-        const sql = "SELECT * FROM reply WHERE reply_deleted = 0 AND board_uid = ? LIMIT ? OFFSET ?";
-        const queryResult = await db.queryPromise(sql, [uid, pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
-
-        result.data = queryResult
-        
-        res.status(200).send(result);     
-        
+        result.data = queryResult.rows;
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
 });
 
 // post/reply/:uid 댓글 쓰기
-router.post("/:uid", sessionCheck.have, async(req, res, next) => {     //board의 uid
-    const { uid } = req.params;
-    const { replyMain } = req.query;
+router.post("/", loginAuth, async (req, res, next) => {
+    //board의 uid
+    const { uid, replyMain } = req.query;
     const id = req.session.userId;
     const result = {
-        "message": `Got a POST request at /reply/${uid}`,
-    };      
-    const integrityCheck = errors.queryCheck({ uid, replyMain }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }    
-
+        message: `Got a POST request at /reply/${uid}`,
+    };
+    const today = new Date();
     try {
-        const sql = "INSERT INTO reply ( id, board_uid, reply_main, reply_deleted) VALUES (?, ?, ?, 0)";
-        await db.queryPromise(sql, [id, uid, replyMain]);
-        
-        res.status(200).send(result);         
+        queryCheck({ uid, replyMain });
+        const sql = "INSERT INTO reply ( id, board_uid, reply_main, reply_update_time, reply_deleted) VALUES ($1, $2, $3, $4,false)";
+        await pgPool.query(sql, [id, uid, replyMain, today]);
+
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
 });
 
-
-// 
-router.put("/:uid", sessionCheck.have, async (req, res, next) => {    //reply uid
+// Put/:uid 댓글 수정
+router.put("/:uid", loginAuth, async (req, res, next) => {
+    //reply uid
     const { uid } = req.params;
-    const { replyMain } = req.query;    
+    const { replyMain } = req.query;
     const id = req.session.userId;
-
-
-    const integrityCheck = errors.queryCheck({ uid, replyMain }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }    
-
     const result = {
-        "message": `Got a PUT request at /reply/${uid}`,
-    };      
-
+        message: `Got a PUT request at /reply/${uid}`,
+    };
+    const today = new Date();
     try {
-        const permisionSql = "SELECT * FROM reply WHERE reply_uid = ? AND id = ?";
-        const permisionQueryResult = await db.queryPromise(permisionSql, [uid, id]);
+        queryCheck({ uid, replyMain });
 
-        if (!permisionQueryResult||permisionQueryResult.length === 0) {
-            const error = new Error("dont have permision or reply not Found");
-            error.status = 401;     
-            next(error);
-        }  
-        const sql = "UPDATE reply SET reply_main = ? WHERE reply_uid = ?";
-        await db.queryPromise(sql, [replyMain, uid]);
+        const sql = "UPDATE reply SET reply_main = $1, reply_update_time = $2 WHERE reply_uid = $3 AND id = $4";
+        const queryResult = await pgPool.query(sql, [replyMain, today, uid, id]);
+        if (queryResult.rowCount === 0) {
+            const error = new Error("update Fail");
+            error.status = 400;
+            throw error;
+        }
 
-        res.status(200).send(result);      
-        
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
 });
 
-// delete /댓글 삭제
-router.delete("/:uid",  sessionCheck.have, async(req, res, next) => {    //reply uid
+// Delete/:uid 댓글 삭제
+router.delete("/:uid", loginAuth, async (req, res, next) => {
+    //reply uid
     const { uid } = req.params;
     const { replyMain } = req.query;
-    const integrityCheck = errors.queryCheck({ uid, replyMain }); 
-
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }    
+    const id = req.session.userId;
 
     const result = {
-        "message": `Got a DELETE request at /reply/${uid}`,
-    };      
+        message: `Got a DELETE request at /reply/${uid}`,
+    };
 
     try {
-        const permisionSql = "SELECT * FROM reply WHERE reply_uid = ? AND id = ?";
-        const permisionQueryResult = await db.queryPromise(permisionSql, [uid, id]);
+        queryCheck({ uid, replyMain });
 
-        if (!permisionQueryResult||permisionQueryResult.length === 0) {
-            const error = new Error("dont have permision");
-            error.status = 401;     
-            next(error);
-        }  
-
-        const sql = "UPDATE reply SET  reply_deleted = 1 WHERE reply_uid = ?";
-        const queryResult = await db.queryPromise(sql, [uid]);
-
-        res.status(200).send(result);             
+        const sql = "UPDATE reply SET  reply_deleted = true, reply_update_time = $1 WHERE reply_uid = $2 AND id = $3";
+        const queryResult = await pgPool.query(sql, [today, uid, id]);
+        if (queryResult.rowCount === 0) {
+            const error = new Error("delete Fail");
+            error.status = 400;
+            throw error;
+        }
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }

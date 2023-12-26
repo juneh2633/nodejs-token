@@ -1,9 +1,8 @@
 const router = require("express").Router();
-const path = require("path"); 
-const db = require("../modules/database");
-const errors = require("../modules/error");
-const sessionCheck = require("../modules/session-check");
-
+const path = require("path");
+const pgPool = require("../modules/pgPool");
+const loginAuth = require("../middleware/loginAuth");
+const queryCheck = require("../modules/queryCheck");
 /////////-----board---------///////////
 //  GET/all?page        =>게시글 목록 가져오기(pagenation)
 //  GET/:uid            =>게시글 가져오기
@@ -12,166 +11,136 @@ const sessionCheck = require("../modules/session-check");
 //  DELETE/:uid         =>게시글 삭제
 ///////////////////////////////////////////
 
-
-router.get("/all", sessionCheck.have, async(req, res, next) => {  
+router.get("/all", loginAuth, async (req, res, next) => {
     const { page } = req.query;
     const pageSizeOption = 10;
-
-    const integrityCheck = errors.queryCheck({ page }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }    
+    const result = {
+        message: "get boards success",
+        data: null,
+    };
 
     try {
-
-        const countSql = "SELECT COUNT(*) FROM board WHERE board_deleted = 0";
-        const countQueryResult = await db.queryPromise(countSql, [])
- 
-        const boardsCount = parseInt(countQueryResult[0]['COUNT(*)']);
-        if (boardsCount < (parseInt(page)-1) * pageSizeOption) {   
-            const error = new Error("board not Found ");
-            error.status = 404;
-            next(error);            
+        try {
+            queryCheck({ page });
+        } catch {
+            page = 1;
         }
 
-        const sql = "SELECT * FROM board WHERE board_deleted = 0 LIMIT ? OFFSET ?";
-        const queryResult = await db.queryPromise(sql, [pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
-
-        const result = {
-            "message": "get boards success",
-            "data":  queryResult
-        };      
-
-        res.status(200).send(result);          
+        const sql = `SELECT * FROM board 
+                     WHERE board_deleted = false
+                     ORDER BY board_uid
+                     LIMIT $1 OFFSET $2`;
+        const queryResult = await pgPool.query(sql, [pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
+        if (!queryResult || queryResult.rows.length === 0) {
+            result.message = "no board";
+        }
+        result.data = queryResult.rows;
+        res.status(200).send(result);
     } catch (err) {
         next(err);
-    }    
+    }
 });
 
-
-router.get("/:uid", sessionCheck.have, async (req, res, next) => {
+router.get("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
-
-    const integrityCheck = errors.queryCheck({ uid }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }       
-
     const result = {
-        "message": "get board success",
-        "data": null
-    };      
-    try {
-        const sql = "SELECT * FROM board WHERE board_uid = ? AND board_deleted = 0";
-        const queryResult = await db.queryPromise(sql, [uid]);
+        message: "get board success",
+        data: null,
+        editable: false,
+    };
 
-        if (!queryResult || queryResult.length === 0) {
+    try {
+        queryCheck({ uid });
+
+        const sql = "SELECT * FROM board WHERE board_uid = $1 AND board_deleted = false";
+        const queryResult = await pgPool.query(sql, [uid]);
+
+        if (!queryResult || queryResult.rows.length === 0) {
             const error = new Error("board not Found");
             error.status = 404;
             next(error);
         }
 
-        result.data = queryResult;
-        res.status(200).send(result);          
+        if (queryResult.rows[0].id === req.session.userId) {
+            result.editable = true;
+        }
+        result.data = queryResult.rows[0];
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
 });
 
 // post 게시글 쓰기
-router.post("/", sessionCheck.have, async(req, res, next) => {  
+router.post("/", loginAuth, async (req, res, next) => {
     const id = req.session.userId;
-    const { title, maintext } = req.query; 
-    
-    const integrityCheck = errors.queryCheck({ id, title, maintext }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }        
+    const { title, maintext } = req.query;
 
     const today = new Date();
 
     try {
-        const sql = "INSERT INTO board( id, title, maintext, board_update_time , board_deleted) VALUES (? , ? , ?, ?, 0)"
-        await db.queryPromise(sql, [id, title, maintext, today]);
+        queryCheck({ id, title, maintext });
+        const sql = "INSERT INTO board( id, title, board_main, board_update_time , board_deleted) VALUES ($1 , $2 , $3, $4, false)";
+        await pgPool.query(sql, [id, title, maintext, today]);
 
-        res.status(200).send({ "message": "Got a POST requst at /board" });
+        res.status(200).send({ message: "Got a POST requst at /board" });
     } catch (err) {
         next(err);
     }
-
 });
 // put/1   게시글 수정
-router.put("/:uid", sessionCheck.have, async (req, res, next) => {
+router.put("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
     const { title, maintext } = req.query;
     const id = req.session.userId;
 
-    const integrityCheck = errors.queryCheck({ uid, title, maintext }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    }    
-
     const today = new Date();
     const result = {
-        "message": `Got a PUT request at board/${uid}`
+        message: `Got a PUT request at board/${uid}`,
     };
 
     try {
-        const permisionSql = "SELECT * FROM board WHERE board_uid = ? AND id = ?";
-        const permisionQueryResult = await db.queryPromise(permisionSql, [uid, id]);
-        if (!permisionQueryResult||permisionQueryResult.length === 0) {
-            const error = new Error("dont have permision or board not Found");
-            error.status = 401;     
-            next(error);
-        }  
-        const sql = "UPDATE board SET title = ?, maintext = ?, board_update_time = ? WHERE board_uid = ?";
-        await db.queryPromise(sql, [title, maintext, today, uid]);
+        queryCheck({ uid, title, maintext });
+        const sql = "UPDATE board SET title = $1, board_main = $2, board_update_time = $3 WHERE board_uid = $4 AND id = $5";
+        const queryResult = await pgPool.query(sql, [title, maintext, today, uid, id]);
 
-        res.status(200).send(result);             
+        if (queryResult.rowCount === 0) {
+            const error = new Error("update Fail");
+            error.status = 400;
+            throw error;
+        }
+
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
-   
 });
 
 // delete/1 게시글 삭제
-router.delete("/:uid", sessionCheck.have,  async(req, res, next) => {
+router.delete("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
-
-    const integrityCheck = errors.queryCheck({ uid }); 
-    if (!integrityCheck.success) {
-        next(integrityCheck.error);
-        return;
-    } 
-
-    const today = new Date();
+    const id = req.session.userId;
     const result = {
-        "message": `Got a DELETE request at /${uid}`,
+        message: `Got a DELETE request at /${uid}`,
     };
+    const today = new Date();
 
     try {
-        const permisionSql = "SELECT * FROM board WHERE board_uid = ? AND id = ?";
-        const permisionQueryResult = await db.queryPromise(permisionSql, [uid, id]);
+        queryCheck({ uid, id });
 
-        if (!permisionQueryResult||permisionQueryResult.length === 0) {
-            const error = new Error("dont have permision");
-            error.status = 401;     
-            next(error);
-        }  
+        const sql = "UPDATE board SET board_update_time = $1, board_deleted = true WHERE board_uid = $2 AND id = $3";
+        const queryResult = await pgPool.query(sql, [today, uid, id]);
 
-        const sql = "UPDATE board SET board_update_time = ?, bord_deleted = 1 WHERE board_uid = ?";
-        const queryResult = await db.queryPromise(sql, [today, uid]);     
+        if (queryResult.rowCount === 0) {
+            const error = new Error("delete Fail");
+            error.status = 400;
+            throw error;
+        }
 
-        res.status(200).send(result); 
-
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
-    
 });
 
 module.exports = router;
