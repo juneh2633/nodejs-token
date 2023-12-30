@@ -11,10 +11,10 @@ const patternSelect = (str) => {
     if (str === "title") {
         return /^.{1,30}$/;
     }
-    if (str === "maintext") {
+    if (str === "boardContents") {
         return /^.{1,5000}$/;
     }
-    if (str === "replyMain") {
+    if (str === "replyContents") {
         return /^.{1,500}$/;
     }
     if (str === "page" || str === "uid" || str === "boardUid" || str === "replyUid") {

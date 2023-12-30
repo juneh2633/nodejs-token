@@ -6,4 +6,5 @@ module.exports = {
     host: process.env.DB_HOST,
     database: process.env.DB_DATABASE,
     port: process.env.DB_PORT,
+    max: process.env.DB_MAX,
 };

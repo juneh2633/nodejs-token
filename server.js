@@ -1,19 +1,14 @@
 const express = require("express");
 const session = require("express-session");
 const url = require("url");
-
 const app = express();
-const port = 8001;
 
-app.use(
-    session({
-        secret: "juneh2633",
-        resave: false, //변경이 없는 경우에도 다시 저장할지(매 request마다)
-        saveUninitialized: true, //저장하지 않은 세션에 대해 아무내용없는 세션을 저장할지
-        cookie: { secure: false }, // HTTPS를 사용하는 경우 true로 설정
-    })
-);
-app.use(express.json()); //json을 통신할 수 있게 해주는 설정
+const { port } = require("./src/config/portConfig");
+
+const sessionConfig = require("./src/config/sessionConfig");
+
+app.use(session(sessionConfig));
+app.use(express.json());
 
 const pageAPI = require("./src/routers/page");
 app.use("/", pageAPI);

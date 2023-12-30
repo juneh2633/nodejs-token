@@ -14,7 +14,7 @@ const queryCheck = require("../modules/queryCheck");
 // get/reply/:uid/?page 게시글의 댓글 목록 가져오기
 router.get("/", loginAuth, async (req, res, next) => {
     //board의 uid
-    const id = req.session.userId;
+    const idx = req.session.idx;
     const { uid, page } = req.query;
     const pageSizeOption = 10;
 
@@ -32,10 +32,10 @@ router.get("/", loginAuth, async (req, res, next) => {
             result.message = "no reply";
         }
         queryResult.rows.forEach((elem) => {
-            if (elem.id === id) {
-                elem.editable = true;
+            if (elem.idx === idx) {
+                elem.isMine = true;
             } else {
-                elem.editable = false;
+                elem.isMine = false;
             }
         });
 
@@ -49,18 +49,16 @@ router.get("/", loginAuth, async (req, res, next) => {
 // post/reply/:uid 댓글 쓰기
 router.post("/", loginAuth, async (req, res, next) => {
     //board의 uid
-    const { uid, replyMain } = req.query;
-    const id = req.session.userId;
-    const result = {
-        message: `Got a POST request at /reply/${uid}`,
-    };
+    const { uid, replyContents } = req.query;
+    const idx = req.session.idx;
+
     const today = new Date();
     try {
-        queryCheck({ uid, replyMain });
-        const sql = "INSERT INTO reply ( id, board_uid, reply_main, reply_update_time, reply_deleted) VALUES ($1, $2, $3, $4,false)";
-        await pgPool.query(sql, [id, uid, replyMain, today]);
+        queryCheck({ uid, replyContents });
+        const sql = "INSERT INTO reply ( idx, board_uid, contents, update_at, reply_deleted) VALUES ($1, $2, $3, $4,false)";
+        await pgPool.query(sql, [idx, uid, replyContents, today]);
 
-        res.status(200).send(result);
+        res.status(200).send(`Got a POST request at /reply/${uid}`);
     } catch (err) {
         next(err);
     }
@@ -70,24 +68,22 @@ router.post("/", loginAuth, async (req, res, next) => {
 router.put("/:uid", loginAuth, async (req, res, next) => {
     //reply uid
     const { uid } = req.params;
-    const { replyMain } = req.query;
-    const id = req.session.userId;
-    const result = {
-        message: `Got a PUT request at /reply/${uid}`,
-    };
+    const { replyContents } = req.query;
+    const idx = req.session.idx;
+
     const today = new Date();
     try {
-        queryCheck({ uid, replyMain });
+        queryCheck({ uid, replyContents });
 
-        const sql = "UPDATE reply SET reply_main = $1, reply_update_time = $2 WHERE reply_uid = $3 AND id = $4";
-        const queryResult = await pgPool.query(sql, [replyMain, today, uid, id]);
+        const sql = "UPDATE reply SET contents = $1, update_at = $2 WHERE reply_uid = $3 AND idx = $4";
+        const queryResult = await pgPool.query(sql, [replyContents, today, uid, idx]);
         if (queryResult.rowCount === 0) {
             const error = new Error("update Fail");
             error.status = 400;
             throw error;
         }
 
-        res.status(200).send(result);
+        res.status(200).send(`Got a PUT request at /reply/${uid}`);
     } catch (err) {
         next(err);
     }
@@ -97,24 +93,21 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
 router.delete("/:uid", loginAuth, async (req, res, next) => {
     //reply uid
     const { uid } = req.params;
-    const { replyMain } = req.query;
-    const id = req.session.userId;
-
-    const result = {
-        message: `Got a DELETE request at /reply/${uid}`,
-    };
-
+    const idx = req.session.idx;
+    const today = new Date();
     try {
-        queryCheck({ uid, replyMain });
+        queryCheck({ uid });
 
-        const sql = "UPDATE reply SET  reply_deleted = true, reply_update_time = $1 WHERE reply_uid = $2 AND id = $3";
-        const queryResult = await pgPool.query(sql, [today, uid, id]);
+        const sql = "UPDATE reply SET reply_deleted = true, update_at = $1 WHERE reply_uid = $2 AND idx = $3";
+
+        const queryResult = await pgPool.query(sql, [today, uid, idx]);
+        console.log("쿼리는 성공했네");
         if (queryResult.rowCount === 0) {
             const error = new Error("delete Fail");
             error.status = 400;
             throw error;
         }
-        res.status(200).send(result);
+        res.status(200).send(`Got a DELETE request at /reply/${uid}`);
     } catch (err) {
         next(err);
     }
