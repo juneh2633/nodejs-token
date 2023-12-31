@@ -1,9 +1,11 @@
 const express = require("express");
 const session = require("express-session");
 const url = require("url");
+const https = require("https");
 const app = express();
 
-const { port } = require("./src/config/portConfig");
+const { httpPort, httpsPort } = require("./src/config/portConfig");
+const httpsOptions = require("./src/config/httpsConfig");
 
 const sessionConfig = require("./src/config/sessionConfig");
 
@@ -35,6 +37,10 @@ app.use((err, req, res, next) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`${port}번에서 웹서버 실행`);
+app.listen(httpPort, () => {
+    console.log(`${httpPort}번에서 HTTP 웹서버 실행`);
+});
+
+https.createServer(httpsOptions, app).listen(httpsPort, () => {
+    console.log(`${httpsPort}번에서 HTTPS 웹서버 실행`);
 });
