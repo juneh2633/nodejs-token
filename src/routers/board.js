@@ -15,7 +15,6 @@ router.get("/all", loginAuth, async (req, res, next) => {
     const { page } = req.query;
     const pageSizeOption = 10;
     const result = {
-        message: "get boards success",
         data: null,
     };
 
@@ -27,10 +26,8 @@ router.get("/all", loginAuth, async (req, res, next) => {
                      ORDER BY board.board_uid
                      LIMIT $1 OFFSET $2;`;
         const queryResult = await pgPool.query(sql, [pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
-        if (!queryResult || queryResult.rows.length === 0) {
-            result.message = "no board";
-        }
 
+        next(result);
         result.data = queryResult.rows;
         res.status(200).send(result);
     } catch (err) {
@@ -42,7 +39,6 @@ router.get("/all", loginAuth, async (req, res, next) => {
 router.get("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
     const result = {
-        message: "get board success",
         data: null,
         isMine: false,
     };
@@ -62,7 +58,7 @@ router.get("/:uid", loginAuth, async (req, res, next) => {
         if (queryResult.rows[0].idx === req.session.idx) {
             result.isMine = true;
         }
-        //isMine, owner
+        next(result);
         result.data = queryResult.rows[0];
         res.status(200).send(result);
     } catch (err) {
@@ -75,13 +71,17 @@ router.post("/", loginAuth, async (req, res, next) => {
     const idx = req.session.idx;
     const { title, boardContents } = req.query;
     const today = new Date();
+    const result = {
+        data: null,
+    };
 
     try {
         queryCheck({ title, boardContents });
         const sql = "INSERT INTO board( idx, title, contents, update_at , board_deleted) VALUES ($1 , $2 , $3, $4, false)";
         await pgPool.query(sql, [idx, title, boardContents, today]);
 
-        res.status(200).send("Got a POST requst at /board");
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -92,7 +92,9 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
     const { title, boardContents } = req.query;
     const idx = req.session.idx;
-
+    const result = {
+        data: null,
+    };
     const today = new Date();
 
     try {
@@ -105,8 +107,8 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
             error.status = 400;
             throw error;
         }
-
-        res.status(200).send(`Got a PUT request at board/${uid}`);
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -117,7 +119,9 @@ router.delete("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
     const idx = req.session.idx;
     const today = new Date();
-
+    const result = {
+        data: null,
+    };
     try {
         queryCheck({ uid });
 
@@ -129,7 +133,7 @@ router.delete("/:uid", loginAuth, async (req, res, next) => {
             error.status = 400;
             throw error;
         }
-
+        next(result);
         res.status(200).send(`Got a DELETE request at /${uid}`);
     } catch (err) {
         next(err);

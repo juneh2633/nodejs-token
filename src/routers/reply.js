@@ -17,7 +17,6 @@ router.get("/", loginAuth, async (req, res, next) => {
     const pageSizeOption = 10;
 
     const result = {
-        message: "get replies success",
         data: null,
     };
 
@@ -36,7 +35,7 @@ router.get("/", loginAuth, async (req, res, next) => {
                 elem.isMine = false;
             }
         });
-
+        next(result);
         result.data = queryResult.rows;
         res.status(200).send(result);
     } catch (err) {
@@ -49,14 +48,16 @@ router.post("/", loginAuth, async (req, res, next) => {
     //board의 uid
     const { uid, replyContents } = req.query;
     const idx = req.session.idx;
-
+    const result = {
+        data: null,
+    };
     const today = new Date();
     try {
         queryCheck({ uid, replyContents });
         const sql = "INSERT INTO reply ( idx, board_uid, contents, update_at, reply_deleted) VALUES ($1, $2, $3, $4,false)";
         await pgPool.query(sql, [idx, uid, replyContents, today]);
-
-        res.status(200).send(`Got a POST request at /reply/${uid}`);
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -68,7 +69,9 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
     const { replyContents } = req.query;
     const idx = req.session.idx;
-
+    const result = {
+        data: null,
+    };
     const today = new Date();
     try {
         queryCheck({ uid, replyContents });
@@ -80,8 +83,8 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
             error.status = 400;
             throw error;
         }
-
-        res.status(200).send(`Got a PUT request at /reply/${uid}`);
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -89,9 +92,11 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
 
 // Delete/:uid 댓글 삭제
 router.delete("/:uid", loginAuth, async (req, res, next) => {
-    //reply uid
     const { uid } = req.params;
     const idx = req.session.idx;
+    const result = {
+        data: null,
+    };
     const today = new Date();
     try {
         queryCheck({ uid });
@@ -105,6 +110,7 @@ router.delete("/:uid", loginAuth, async (req, res, next) => {
             error.status = 400;
             throw error;
         }
+        next(result);
         res.status(200).send(`Got a DELETE request at /reply/${uid}`);
     } catch (err) {
         next(err);

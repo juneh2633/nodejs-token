@@ -21,6 +21,9 @@ const url = require("url");
 router.get("/login", logoutAuth, async (req, res, next) => {
     const { id, password } = req.query;
     const error = new Error("id not Found");
+    const result = {
+        data: null,
+    };
     error.status = 401;
     try {
         queryCheck({ id, password });
@@ -37,8 +40,8 @@ router.get("/login", logoutAuth, async (req, res, next) => {
 
         req.session.idx = queryResult.rows[0].idx;
         req.session.userId = queryResult.rows[0].id;
-        next("login");
-        res.status(200).send("login success");
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -47,19 +50,18 @@ router.get("/login", logoutAuth, async (req, res, next) => {
 //  GET/logout          =>로그아웃
 router.get("/logout", loginAuth, (req, res, next) => {
     const result = {
-        message: "logout success",
+        data: null,
     };
-    next("logout");
+    next(result);
     req.session.destroy();
 
-    res.status(200).send(result);
+    res.status(200).send();
 });
 
 //  GET/find/id         =>아이디 찾기
 router.get("/find/id", logoutAuth, async (req, res, next) => {
     const { name, phonenumber } = req.query;
     const result = {
-        message: "id Found success",
         data: null,
     };
     try {
@@ -69,8 +71,9 @@ router.get("/find/id", logoutAuth, async (req, res, next) => {
         const queryResult = await pgPool.query(sql, [name, phonenumber]);
 
         if (queryResult.rows.length === 0) {
-            res.status(400).send("id not Found");
-            return;
+            const error = new Error("id not Found");
+            error.status = 401;
+            throw error;
         }
 
         result.data = queryResult.rows[0].id;
@@ -85,7 +88,6 @@ router.get("/find/id", logoutAuth, async (req, res, next) => {
 router.get("/find/password", logoutAuth, async (req, res, next) => {
     const { id, name, phonenumber } = req.query;
     const result = {
-        message: "password Found success",
         data: null,
     };
 
@@ -96,11 +98,13 @@ router.get("/find/password", logoutAuth, async (req, res, next) => {
         const queryResult = await pgPool.query(sql, [id, name, phonenumber]);
 
         if (queryResult.rows.length === 0) {
-            res.status(400).send("password not Found");
-            return;
+            const error = new Error("password not Found");
+            error.status = 401;
+            throw error;
         }
 
         result.data = queryResult.rows[0].password; //해시된 값 출력
+        next(result);
         res.status(200).send(result);
     } catch (err) {
         next(err);
@@ -113,7 +117,6 @@ router.get("/find/password", logoutAuth, async (req, res, next) => {
 router.get("/", loginAuth, async (req, res, next) => {
     const idx = req.session.idx;
     const result = {
-        message: "Get account request",
         data: null,
     };
 
@@ -126,7 +129,7 @@ router.get("/", loginAuth, async (req, res, next) => {
             error.status = 404;
             throw error;
         }
-
+        next(result);
         result.data = {
             id: queryResult.rows[0].id,
             //password: queryResult.rows[0].password,
@@ -142,7 +145,9 @@ router.get("/", loginAuth, async (req, res, next) => {
 //  POST/               =>회원가입
 router.post("/", logoutAuth, async (req, res, next) => {
     const { id, password, passwordCheck, name, phonenumber } = req.query;
-
+    const result = {
+        data: null,
+    };
     try {
         queryCheck({ id, password, passwordCheck, name, phonenumber });
         const pwHashed = await pwHash(password);
@@ -158,8 +163,8 @@ router.post("/", logoutAuth, async (req, res, next) => {
 
         const sql = "INSERT INTO account (id, name, password, phonenumber, account_deleted) VALUES ($1, $2, $3, $4, false)";
         await pgPool.query(sql, [id, name, pwHashed, phonenumber]);
-
-        res.status(200).send("Got a Post request");
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -169,14 +174,16 @@ router.post("/", logoutAuth, async (req, res, next) => {
 router.put("/", loginAuth, async (req, res, next) => {
     const idx = req.session.idx;
     const { password, passwordCheck, name, phonenumber } = req.query;
-
+    const result = {
+        data: null,
+    };
     try {
         queryCheck({ password, passwordCheck, name, phonenumber });
         const pwHashed = await pwHash(password);
         const sql = "UPDATE account SET password = $1, name = $2, phonenumber = $3 WHERE idx = $4 ";
         await pgPool.query(sql, [pwHashed, name, phonenumber, idx]);
-
-        res.status(200).send("Got a PUT request");
+        next(result);
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
@@ -185,13 +192,16 @@ router.put("/", loginAuth, async (req, res, next) => {
 //  DELETE/             =>회원탈퇴
 router.delete("/", loginAuth, async (req, res, next) => {
     const idx = req.session.idx;
-
+    const result = {
+        data: null,
+    };
     try {
         const sql = "UPDATE account SET account_deleted = true WHERE idx = $1 ";
         await pgPool.query(sql, [idx]);
 
+        next(result);
         req.session.destroy();
-        res.status(200).send("Got a Delete request");
+        res.status(200).send();
     } catch (err) {
         next(err);
     }
