@@ -1,11 +1,11 @@
 const router = require("express").Router();
-const path = require("path");
 const pgPool = require("../modules/pgPool");
 const loginAuth = require("../middleware/loginAuth");
 const logoutAuth = require("../middleware/logoutAuth");
 const queryCheck = require("../modules/queryCheck");
 const pwHash = require("../modules/pwHash");
 const pwCompare = require("../modules/pwComapre");
+const url = require("url");
 /////////-----account---------///////////
 //  GET/login           => 로그인
 //  GET/logout          =>로그아웃
@@ -20,25 +20,25 @@ const pwCompare = require("../modules/pwComapre");
 //  GET/login           => 로그인
 router.get("/login", logoutAuth, async (req, res, next) => {
     const { id, password } = req.query;
-    const result = {
-        message: "login fail",
-    };
-
+    const error = new Error("id not Found");
+    error.status = 401;
     try {
         queryCheck({ id, password });
         const sql = "SELECT * FROM account WHERE id = $1  AND account_deleted = false";
         const queryResult = await pgPool.query(sql, [id]);
 
-        if (queryResult.rows.length !== 0) {
-            const match = await pwCompare(password, queryResult.rows[0].password);
-
-            if (match) {
-                result.message = "login success";
-                req.session.idx = queryResult.rows[0].idx;
-            }
+        if (queryResult.rows.length === 0) {
+            throw error;
+        }
+        const match = await pwCompare(password, queryResult.rows[0].password);
+        if (!match) {
+            throw error;
         }
 
-        res.status(200).send(result);
+        req.session.idx = queryResult.rows[0].idx;
+        req.session.userId = queryResult.rows[0].id;
+        next("login");
+        res.status(200).send("login success");
     } catch (err) {
         next(err);
     }
@@ -49,8 +49,9 @@ router.get("/logout", loginAuth, (req, res, next) => {
     const result = {
         message: "logout success",
     };
-
+    next("logout");
     req.session.destroy();
+
     res.status(200).send(result);
 });
 
@@ -73,6 +74,7 @@ router.get("/find/id", logoutAuth, async (req, res, next) => {
         }
 
         result.data = queryResult.rows[0].id;
+        next(result);
         res.status(200).send(result);
     } catch (err) {
         next(err);

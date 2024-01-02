@@ -1,5 +1,4 @@
 const router = require("express").Router();
-const path = require("path");
 const pgPool = require("../modules/pgPool");
 const loginAuth = require("../middleware/loginAuth");
 const queryCheck = require("../modules/queryCheck");
@@ -8,8 +7,7 @@ const queryCheck = require("../modules/queryCheck");
 //  POST/:uid               =>댓글 작성                     board_uid
 //  PUT/:uid                =>댓글 수정                     reply_uid
 //  DELETE/:uid             =>댓글 삭제                     reply_uid
-////////////////////////////////////////////////////////////////////
-//board_uid를 줄 떄, REST적으로 맞지 않으므로 query로 주는게 낫다.
+////////////////////////////////////////////////////////////////
 
 // get/reply/:uid/?page 게시글의 댓글 목록 가져오기
 router.get("/", loginAuth, async (req, res, next) => {

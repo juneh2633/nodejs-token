@@ -1,5 +1,4 @@
 const router = require("express").Router();
-const path = require("path");
 const pgPool = require("../modules/pgPool");
 const loginAuth = require("../middleware/loginAuth");
 const queryCheck = require("../modules/queryCheck");

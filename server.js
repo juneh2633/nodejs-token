@@ -1,16 +1,22 @@
+//-----------------Import--------------------------------------------//
 const express = require("express");
 const session = require("express-session");
 const url = require("url");
 const https = require("https");
 const app = express();
 
+//-----------------config,----------------------------------//
 const { httpPort, httpsPort } = require("./src/config/portConfig");
-const httpsOptions = require("./src/config/httpsConfig");
-
+const httpConfig = require("./src/config/httpsConfig");
 const sessionConfig = require("./src/config/sessionConfig");
 
 app.use(session(sessionConfig));
 app.use(express.json());
+
+// const morgan = require("morgan");
+// app.use(morgan("dev"));
+
+//----------------------API-------------------------------------------//
 
 const pageAPI = require("./src/routers/page");
 app.use("/", pageAPI);
@@ -24,12 +30,41 @@ app.use("/board", boardAPI);
 const replyAPI = require("./src/routers/reply");
 app.use("/reply", replyAPI);
 
-// 404에러는 자동으로 처리해준다.
-// app.use((req, res, next) => {
-//     res.status(404).send("NOT FOUND API");
-// });
-
+//----------------------------Middleware---------------------------------//
+app.use((result, req, res, next) => {
+    if (result instanceof Error) {
+        next(result);
+        return;
+    }
+    const input = Object.entries(req.query);
+    const urlObj = url.parse(req.originalUrl);
+    // await mongoClient
+    //     .db("board_log")
+    //     .collection("logs")
+    //     .insertOne({
+    //         ip: req.ip, // user ip
+    //         method: req.method, // req method
+    //         api_path: urlObj.pathname, // api path
+    //         querystring: urlObj.query, // req query
+    //         body: req.body, // req body
+    //         req_time: req.date || null, // req time
+    //         res_time: new Date(), // res time
+    //         status_code: res.statusCode || 409, // status code
+    //         result: JSON.stringify(result || {}), // result obj
+    //     });
+    console.log({
+        level: "info",
+        ip: req.ip, // user ip
+        id: req.session.userId || null,
+        method: req.method, // req method
+        api_path: urlObj.pathname, // api path
+        input: input,
+        output: result,
+        time: new Date(), // res time
+    });
+});
 app.use((err, req, res, next) => {
+    console.log(err);
     if (err.status) {
         res.status(err.status).send(err.message);
     } else {
@@ -37,10 +72,11 @@ app.use((err, req, res, next) => {
     }
 });
 
+//---------------------------web_server--------------------------------------///
 app.listen(httpPort, () => {
     console.log(`${httpPort}번에서 HTTP 웹서버 실행`);
 });
 
-https.createServer(httpsOptions, app).listen(httpsPort, () => {
+https.createServer(httpConfig, app).listen(httpsPort, () => {
     console.log(`${httpsPort}번에서 HTTPS 웹서버 실행`);
 });
