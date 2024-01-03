@@ -6,39 +6,32 @@ module.exports = async (result, req, res, next) => {
 
     try {
         if (result instanceof Error) {
-            await mongoClient
-                .db("board_log")
-                .collection("logs")
-                .insertOne({
-                    level: "error",
-                    ip: req.ip,
-                    id: req.session.userId || null,
-                    method: req.method,
-                    api_path: urlObj.pathname,
-                    input: input || null,
-                    status: result.status || 500,
-                    message: result.message || null,
-                    time: new Date(),
-                });
-            next(result);
-            return;
-        }
-        await mongoClient
-            .db("board_log")
-            .collection("logs")
-            .insertOne({
-                level: "info",
+            await mongoClient.insertOne({
+                level: "error",
                 ip: req.ip,
                 id: req.session.userId || null,
                 method: req.method,
                 api_path: urlObj.pathname,
                 input: input || null,
-                output: result,
+                status: result.status || 500,
+                message: result.message || null,
                 time: new Date(),
             });
-    } catch {
-        const error = new Error();
-        error.status = 500;
-        next(error);
+            next(result);
+            return;
+        }
+
+        await mongoClient.insertOne({
+            level: "info",
+            ip: req.ip,
+            id: req.session.userId || null,
+            method: req.method,
+            api_path: urlObj.pathname,
+            input: input || null,
+            output: result,
+            time: new Date(),
+        });
+    } catch (err) {
+        next(err);
     }
 };

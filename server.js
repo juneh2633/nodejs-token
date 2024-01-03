@@ -27,6 +27,8 @@ app.use("/board", boardAPI);
 const replyAPI = require("./src/routers/reply");
 app.use("/reply", replyAPI);
 
+const logAPI = require("./src/routers/log");
+app.use("/log", logAPI);
 //----------------------------logger---------------------------------//
 const logger = require("./src/middleware/logger");
 app.use(logger);

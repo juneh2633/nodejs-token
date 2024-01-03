@@ -76,7 +76,7 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
     try {
         queryCheck({ uid, replyContents });
 
-        const sql = "UPDATE reply SET contents = $1, update_at = $2 WHERE reply_uid = $3 AND idx = $4";
+        const sql = "UPDATE reply SET contents = $1, update_at = $2 WHERE reply_uid = $3 AND idx = $4 AND reply_deleted = false";
         const queryResult = await pgPool.query(sql, [replyContents, today, uid, idx]);
         if (queryResult.rowCount === 0) {
             const error = new Error("update Fail");
@@ -104,7 +104,7 @@ router.delete("/:uid", loginAuth, async (req, res, next) => {
         const sql = "UPDATE reply SET reply_deleted = true, update_at = $1 WHERE reply_uid = $2 AND idx = $3";
 
         const queryResult = await pgPool.query(sql, [today, uid, idx]);
-        console.log("쿼리는 성공했네");
+
         if (queryResult.rowCount === 0) {
             const error = new Error("delete Fail");
             error.status = 400;
