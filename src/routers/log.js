@@ -1,12 +1,14 @@
 const router = require("express").Router();
-const pgPool = require("../modules/pgPool");
 const mongoClient = require("../modules/mongoClient");
 const queryCheck = require("../modules/queryCheck");
-/////////-------log---------///////////
+const adminAuth = require("../middleware/adminAuth");
+const pattern = /^(\d{4})(-\d{2})?(-\d{2})?(T\d{2}(:\d{2}(:\d{2}(\.\d{3})?)?)?(Z)?)?$/;
+
+/////////-------log---------///////////s
 //  GET/all             =>모두 가져오기
 //  GET/                =>
 /////////////////////////////////////////
-router.get("/all", async (req, res, next) => {
+router.get("/all", adminAuth, async (req, res, next) => {
     const { orderBy } = req.query;
     const asc = orderBy === "desc" ? -1 : 1;
     const result = {
@@ -21,7 +23,7 @@ router.get("/all", async (req, res, next) => {
         next(err);
     }
 });
-router.get("/", async (req, res, next) => {
+router.get("/", adminAuth, async (req, res, next) => {
     const { orderBy, id, method, api, fromDate, toDate } = req.query;
     const asc = orderBy === "desc" ? -1 : 1;
     const result = {
@@ -38,12 +40,12 @@ router.get("/", async (req, res, next) => {
     if (api) {
         findObj.api = api;
     }
-    if (fromDate) {
+    if (fromDate && pattern.test(fromDate)) {
         if (!toDate) {
             findObj.time = {
                 $gte: new Date(fromDate),
             };
-        } else {
+        } else if (pattern.test(toDate)) {
             findObj.time = {
                 $gte: new Date(fromDate),
                 $lte: new Date(toDate),
@@ -51,7 +53,6 @@ router.get("/", async (req, res, next) => {
         }
     }
 
-    console.log(findObj);
     try {
         const queryResult = await mongoClient.find(findObj).sort({ time: asc }).toArray();
 

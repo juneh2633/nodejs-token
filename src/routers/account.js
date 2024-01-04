@@ -40,6 +40,7 @@ router.get("/login", logoutAuth, async (req, res, next) => {
 
         req.session.idx = queryResult.rows[0].idx;
         req.session.userId = queryResult.rows[0].id;
+        if (queryResult.rows[0].is_admin) req.session.admin = true;
         next(result);
         res.status(200).send();
     } catch (err) {
