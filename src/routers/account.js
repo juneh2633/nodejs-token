@@ -5,9 +5,10 @@ const logoutAuth = require("../middleware/logoutAuth");
 const queryCheck = require("../modules/queryCheck");
 const pwHash = require("../modules/pwHash");
 const pwCompare = require("../modules/pwComapre");
+const jwt = require("jsonwebtoken");
 const url = require("url");
 /////////-----account---------///////////
-//  GET/login           => 로그인
+//  POST/login           => 로그인
 //  GET/logout          =>로그아웃
 //  GET/find/id         =>아이디 찾기
 //  GET/find/password   =>비밀번호 찾기
@@ -17,12 +18,21 @@ const url = require("url");
 //  DELETE/             =>회원탈퇴
 /////////////////////////////////////////
 
-//  GET/login           => 로그인
-router.get("/login", logoutAuth, async (req, res, next) => {
+router.get("/test", loginAuth, async (req, res, next) => {
+    try {
+        res.send("으악");
+    } catch (err) {
+        next(err);
+    }
+});
+
+//  POST/login           => 로그인
+router.post("/login", logoutAuth, async (req, res, next) => {
     const { id, password } = req.query;
     const error = new Error("id not Found");
     const result = {
         data: null,
+        token: "",
     };
     error.status = 401;
     try {
@@ -40,9 +50,25 @@ router.get("/login", logoutAuth, async (req, res, next) => {
 
         req.session.idx = queryResult.rows[0].idx;
         req.session.userId = queryResult.rows[0].id;
-        if (queryResult.rows[0].is_admin) req.session.admin = true;
+        req.session.admin = queryResult.rows[0].is_admin ? queryResult.rows[0].is_admin : null;
+        const token = jwt.sign(
+            {
+                idx: queryResult.rows[0].idx,
+                id: id,
+                admin: queryResult.rows[0].is_admin ? true : false,
+            },
+            process.env.SECRET_KEY,
+            {
+                issuer: "juneh",
+                expiresIn: "20m",
+            }
+        );
+        result.token = token;
+        res.cookie("token", token); //, { httpOnly: true, secure: true }
+        console.log(token);
         next(result);
-        res.status(200).send();
+
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }

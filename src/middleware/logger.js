@@ -6,6 +6,7 @@ module.exports = async (result, req, res, next) => {
 
     try {
         if (result instanceof Error) {
+            console.log(result.message);
             await mongoClient.insertOne({
                 level: "error",
                 ip: req.ip,
@@ -13,6 +14,7 @@ module.exports = async (result, req, res, next) => {
                 method: req.method,
                 api_path: urlObj.pathname,
                 input: input || null,
+                stack: result.stack || null,
                 status: result.status || 500,
                 message: result.message || null,
                 time: new Date(),

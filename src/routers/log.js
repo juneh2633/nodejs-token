@@ -23,6 +23,7 @@ router.get("/all", adminAuth, async (req, res, next) => {
         next(err);
     }
 });
+
 router.get("/", adminAuth, async (req, res, next) => {
     const { orderBy, id, method, api, fromDate, toDate } = req.query;
     const asc = orderBy === "desc" ? -1 : 1;
@@ -38,7 +39,7 @@ router.get("/", adminAuth, async (req, res, next) => {
         findObj.method = method;
     }
     if (api) {
-        findObj.api = api;
+        findObj.api_path = new RegExp(encodeURIComponent(api));
     }
     if (fromDate && pattern.test(fromDate)) {
         if (!toDate) {

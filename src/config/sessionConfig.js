@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 module.exports = {
     secret: process.env.SESSION_SECRET,
     resave: false, //변경이 없는 경우에도 다시 저장할지(매 request마다)
