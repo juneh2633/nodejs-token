@@ -2,6 +2,8 @@ const router = require("express").Router();
 const pgPool = require("../modules/pgPool");
 const loginAuth = require("../middleware/loginAuth");
 const queryCheck = require("../modules/queryCheck");
+const tokenElement = require("../modules/tokenElement");
+
 /////////-----reply---------///////////                     uid
 //  GET/:uid?page           =>댓글 가져오기(pagenation)      board_uid
 //  POST/:uid               =>댓글 작성                     board_uid
@@ -12,7 +14,7 @@ const queryCheck = require("../modules/queryCheck");
 // get/reply/:uid/?page 게시글의 댓글 목록 가져오기
 router.get("/", loginAuth, async (req, res, next) => {
     //board의 uid
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
     const { uid, page } = req.query;
     const pageSizeOption = 10;
 
@@ -47,7 +49,7 @@ router.get("/", loginAuth, async (req, res, next) => {
 router.post("/", loginAuth, async (req, res, next) => {
     //board의 uid
     const { uid, replyContents } = req.query;
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
     const result = {
         data: null,
     };
@@ -68,7 +70,7 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
     //reply uid
     const { uid } = req.params;
     const { replyContents } = req.query;
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
     const result = {
         data: null,
     };
@@ -93,7 +95,7 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
 // Delete/:uid 댓글 삭제
 router.delete("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
     const result = {
         data: null,
     };

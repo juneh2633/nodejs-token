@@ -1,9 +1,16 @@
+const jwt = require("jsonwebtoken");
+
 module.exports = (req, res, next) => {
-    if (req.session.idx) {
-        const error = new Error("already have session");
-        error.status = 401;
-        next(error);
-    } else {
+    const token = req.cookies?.token;
+    const error = new Error("already have token");
+    error.status = 401;
+    try {
+        if (token) {
+            throw error;
+        }
+        console.log(token);
         next();
+    } catch (err) {
+        next(err);
     }
 };

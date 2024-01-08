@@ -6,6 +6,7 @@ const queryCheck = require("../modules/queryCheck");
 const pwHash = require("../modules/pwHash");
 const pwCompare = require("../modules/pwComapre");
 const jwt = require("jsonwebtoken");
+const tokenElement = require("../modules/tokenElement");
 const url = require("url");
 /////////-----account---------///////////
 //  POST/login           => 로그인
@@ -48,8 +49,8 @@ router.post("/login", logoutAuth, async (req, res, next) => {
             throw error;
         }
 
-        req.session.idx = queryResult.rows[0].idx;
-        req.session.userId = queryResult.rows[0].id;
+        // req.session.idx = queryResult.rows[0].idx;
+        // req.session.userId = queryResult.rows[0].id;
         req.session.admin = queryResult.rows[0].is_admin ? queryResult.rows[0].is_admin : null;
         const token = jwt.sign(
             {
@@ -81,6 +82,7 @@ router.get("/logout", loginAuth, (req, res, next) => {
     };
     next(result);
     req.session.destroy();
+    res.clearCookie("token");
 
     res.status(200).send();
 });
@@ -142,7 +144,8 @@ router.get("/find/password", logoutAuth, async (req, res, next) => {
 
 //  GET/                =>회원정보 열람
 router.get("/", loginAuth, async (req, res, next) => {
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
+    console.log(idx);
     const result = {
         data: null,
     };
@@ -199,7 +202,7 @@ router.post("/", logoutAuth, async (req, res, next) => {
 
 //  PUT/                =>회원정보 수정
 router.put("/", loginAuth, async (req, res, next) => {
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
     const { password, passwordCheck, name, phonenumber } = req.query;
     const result = {
         data: null,
@@ -218,7 +221,7 @@ router.put("/", loginAuth, async (req, res, next) => {
 
 //  DELETE/             =>회원탈퇴
 router.delete("/", loginAuth, async (req, res, next) => {
-    const idx = req.session.idx;
+    const idx = tokenElement(req.cookies.token).idx;
     const result = {
         data: null,
     };
