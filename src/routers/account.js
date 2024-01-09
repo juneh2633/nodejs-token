@@ -7,7 +7,7 @@ const pwHash = require("../modules/pwHash");
 const pwCompare = require("../modules/pwComapre");
 const jwt = require("jsonwebtoken");
 const tokenElement = require("../modules/tokenElement");
-const url = require("url");
+
 /////////-----account---------///////////
 //  POST/login           => 로그인
 //  GET/logout          =>로그아웃
@@ -18,14 +18,6 @@ const url = require("url");
 //  PUT/                =>회원정보 수정
 //  DELETE/             =>회원탈퇴
 /////////////////////////////////////////
-
-router.get("/test", loginAuth, async (req, res, next) => {
-    try {
-        res.send("으악");
-    } catch (err) {
-        next(err);
-    }
-});
 
 //  POST/login           => 로그인
 router.post("/login", logoutAuth, async (req, res, next) => {
@@ -49,9 +41,6 @@ router.post("/login", logoutAuth, async (req, res, next) => {
             throw error;
         }
 
-        // req.session.idx = queryResult.rows[0].idx;
-        // req.session.userId = queryResult.rows[0].id;
-        req.session.admin = queryResult.rows[0].is_admin ? queryResult.rows[0].is_admin : null;
         const token = jwt.sign(
             {
                 idx: queryResult.rows[0].idx,
@@ -61,12 +50,12 @@ router.post("/login", logoutAuth, async (req, res, next) => {
             process.env.SECRET_KEY,
             {
                 issuer: "juneh",
-                expiresIn: "20m",
+                expiresIn: "1m",
             }
         );
         result.token = token;
-        res.cookie("token", token); //, { httpOnly: true, secure: true }
-        console.log(token);
+        res.cookie("token", token, { httpOnly: true, secure: false }); //, { httpOnsly: true, secure: true }
+
         next(result);
 
         res.status(200).send(result);

@@ -16,6 +16,16 @@ const sessionConfig = require("./src/config/sessionConfig");
 app.use(cookieParser());
 app.use(session(sessionConfig));
 app.use(express.json());
+
+// app.get("*", (req, res, next) => {
+//     const protocol = req.protocol;
+//     if (protocol === "http") {
+//         const dest = `https://${req.hostname}:${httpsPort}${req.url}`;
+//         res.redirect(dest);
+//     }
+//     next();
+// });
+
 //---------------------------API-------------------------------------------//
 
 const accountAPI = require("./src/routers/account");
