@@ -14,7 +14,7 @@ const tokenElement = require("../modules/tokenElement");
 // get/reply/:uid/?page 게시글의 댓글 목록 가져오기
 router.get("/", loginAuth, async (req, res, next) => {
     //board의 uid
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const { uid, page } = req.query;
     const pageSizeOption = 10;
 
@@ -49,7 +49,7 @@ router.get("/", loginAuth, async (req, res, next) => {
 router.post("/", loginAuth, async (req, res, next) => {
     //board의 uid
     const { uid, replyContents } = req.query;
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const result = {
         data: null,
     };
@@ -70,7 +70,7 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
     //reply uid
     const { uid } = req.params;
     const { replyContents } = req.query;
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const result = {
         data: null,
     };
@@ -95,7 +95,7 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
 // Delete/:uid 댓글 삭제
 router.delete("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const result = {
         data: null,
     };

@@ -7,7 +7,8 @@ const pwHash = require("../modules/pwHash");
 const pwCompare = require("../modules/pwComapre");
 const jwt = require("jsonwebtoken");
 const tokenElement = require("../modules/tokenElement");
-
+const signAccessToken = require("../modules/signAccessToken");
+const signRefreshToken = require("../modules/signRefreshToken");
 /////////-----account---------///////////
 //  POST/login           => 로그인
 //  GET/logout          =>로그아웃
@@ -25,7 +26,6 @@ router.post("/login", logoutAuth, async (req, res, next) => {
     const error = new Error("id not Found");
     const result = {
         data: null,
-        token: "",
     };
     error.status = 401;
     try {
@@ -41,21 +41,11 @@ router.post("/login", logoutAuth, async (req, res, next) => {
             throw error;
         }
 
-        const token = jwt.sign(
-            {
-                idx: queryResult.rows[0].idx,
-                id: id,
-                admin: queryResult.rows[0].is_admin ? true : false,
-            },
-            process.env.SECRET_KEY,
-            {
-                issuer: "juneh",
-                expiresIn: "1m",
-            }
-        );
-        result.token = token;
-        res.cookie("token", token, { httpOnly: true, secure: false }); //, { httpOnsly: true, secure: true }
+        const accessToken = signAccessToken(queryResult.rows[0].idx, queryResult.rows[0].is_admin ? true : false);
+        const refreshToken = signRefreshToken(queryResult.rows[0].idx);
 
+        res.cookie("accessToken", accessToken, { httpOnly: true, secure: false });
+        res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: false });
         next(result);
 
         res.status(200).send(result);
@@ -71,7 +61,8 @@ router.get("/logout", loginAuth, (req, res, next) => {
     };
     next(result);
     req.session.destroy();
-    res.clearCookie("token");
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
 
     res.status(200).send();
 });
@@ -133,7 +124,7 @@ router.get("/find/password", logoutAuth, async (req, res, next) => {
 
 //  GET/                =>회원정보 열람
 router.get("/", loginAuth, async (req, res, next) => {
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     console.log(idx);
     const result = {
         data: null,
@@ -191,7 +182,7 @@ router.post("/", logoutAuth, async (req, res, next) => {
 
 //  PUT/                =>회원정보 수정
 router.put("/", loginAuth, async (req, res, next) => {
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const { password, passwordCheck, name, phonenumber } = req.query;
     const result = {
         data: null,
@@ -210,7 +201,7 @@ router.put("/", loginAuth, async (req, res, next) => {
 
 //  DELETE/             =>회원탈퇴
 router.delete("/", loginAuth, async (req, res, next) => {
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const result = {
         data: null,
     };

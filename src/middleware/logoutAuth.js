@@ -1,12 +1,12 @@
 const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
-    const token = req.cookies.token;
+    const accessToken = req.cookies.accessToken;
     const error = new Error("already have token");
     error.status = 401;
     try {
-        if (token) {
-            jwt.verify(token, process.env.SECRET_KEY);
+        if (accessToken) {
+            jwt.verify(accessToken, process.env.SECRET_KEY);
 
             throw error;
         }
@@ -14,7 +14,7 @@ module.exports = (req, res, next) => {
         next();
     } catch (err) {
         if (err.message === "jwt expired") {
-            res.clearCookie("token");
+            res.clearCookie("accessToken");
             next();
         } else {
             next(err);

@@ -39,7 +39,7 @@ router.get("/all", loginAuth, async (req, res, next) => {
 //  GET/:uid            =>게시글 가져오기
 router.get("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
-    const userUid = tokenElement(req.cookies.token).idx;
+    const userUid = tokenElement(req.cookies.accessToken).idx;
     const result = {
         data: null,
         isMine: false,
@@ -70,7 +70,7 @@ router.get("/:uid", loginAuth, async (req, res, next) => {
 
 //  POST/               =>게시글 작성
 router.post("/", loginAuth, async (req, res, next) => {
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const { title, boardContents } = req.query;
     const today = new Date();
     const result = {
@@ -93,7 +93,7 @@ router.post("/", loginAuth, async (req, res, next) => {
 router.put("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
     const { title, boardContents } = req.query;
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const result = {
         data: null,
     };
@@ -119,7 +119,7 @@ router.put("/:uid", loginAuth, async (req, res, next) => {
 //  DELETE/:uid         =>게시글 삭제
 router.delete("/:uid", loginAuth, async (req, res, next) => {
     const { uid } = req.params;
-    const idx = tokenElement(req.cookies.token).idx;
+    const idx = tokenElement(req.cookies.accessToken).idx;
     const today = new Date();
     const result = {
         data: null,
