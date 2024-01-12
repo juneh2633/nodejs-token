@@ -40,6 +40,9 @@ app.use("/reply", replyAPI);
 const logAPI = require("./src/routers/log");
 app.use("/log", logAPI);
 
+const testAPI = require("./src/routers/test");
+app.use("/test", testAPI);
+
 //----------------------------logger---------------------------------//
 const logger = require("./src/middleware/logger");
 app.use(logger);

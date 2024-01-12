@@ -9,7 +9,7 @@ module.exports = (idx, admin) => {
         process.env.SECRET_KEY,
         {
             issuer: "juneh",
-            expiresIn: "10s",
+            expiresIn: "1m",
         }
     );
 };

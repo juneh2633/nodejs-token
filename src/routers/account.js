@@ -46,6 +46,7 @@ router.post("/login", logoutAuth, async (req, res, next) => {
 
         res.cookie("accessToken", accessToken, { httpOnly: true, secure: false });
         res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: false });
+        req.session.idx = queryResult.rows[0];
         next(result);
 
         res.status(200).send(result);

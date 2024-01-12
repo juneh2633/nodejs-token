@@ -1,23 +1,33 @@
 const jwt = require("jsonwebtoken");
 const tokenElement = require("../modules/tokenElement");
+const verifyToken = require("../modules/verifyToken");
+const signAccessToken = require("../modules/signAccessToken");
+
 module.exports = (req, res, next) => {
-    const token = req.cookies.token;
+    const { accessToken, refreshToken } = req.cookies;
+    const verifyAccessToken = verifyToken(accessToken);
+    const verifyRefreshToken = verifyToken(refreshToken);
     const error = new Error("dont have admin permission");
     error.status = 401;
-    try {
-        if (!token) {
-            throw error;
-        }
 
-        jwt.verify(token, process.env.SECRET_KEY);
-        if (!tokenElement(token).admin) {
-            throw error;
+    if (accessToken) {
+        if (!verifyAccessToken.success) {
+            if (verifyAccessToken.expired && !verifyRefreshToken.expired && tokenElement(accessToken).idx === tokenElement(refreshToken).idx && tokenElement(accessToken).admin) {
+                const newAccessToken = signAccessToken(tokenElement(accessToken).idx, tokenElement(accessToken).admin);
+                res.cookie("accessToken", newAccessToken, { httpOnly: true, secure: false });
+                console.log("refresh");
+                next();
+            } else {
+                next(error);
+            }
+        } else {
+            if (tokenElement(accessToken).admin) {
+                next();
+            } else {
+                next(error);
+            }
         }
-        next();
-    } catch (err) {
-        if (err.message) {
-            err.status = 401;
-        }
-        next(err);
+    } else {
+        next(error);
     }
 };
