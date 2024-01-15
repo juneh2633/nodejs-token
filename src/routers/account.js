@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const tokenElement = require("../modules/tokenElement");
 const signAccessToken = require("../modules/signAccessToken");
 const signRefreshToken = require("../modules/signRefreshToken");
+
 /////////-----account---------///////////
 //  POST/login           => 로그인
 //  GET/logout          =>로그아웃
@@ -21,32 +22,35 @@ const signRefreshToken = require("../modules/signRefreshToken");
 /////////////////////////////////////////
 
 //  POST/login           => 로그인
+
 router.post("/login", logoutAuth, async (req, res, next) => {
     const { id, password } = req.query;
-    const error = new Error("id not Found");
+    const exception = {
+        message: "id not Found",
+        status: 401,
+    };
     const result = {
         data: null,
     };
-    error.status = 401;
+
     try {
         queryCheck({ id, password });
         const sql = "SELECT * FROM account WHERE id = $1  AND account_deleted = false";
         const queryResult = await pgPool.query(sql, [id]);
 
-        if (queryResult.rows.length === 0) {
-            throw error;
+        if (!queryResult.rows) {
+            throw exception;
         }
         const match = await pwCompare(password, queryResult.rows[0].password);
         if (!match) {
-            throw error;
+            throw exception;
         }
 
-        const accessToken = signAccessToken(queryResult.rows[0].idx, queryResult.rows[0].is_admin ? true : false);
-        const refreshToken = signRefreshToken(queryResult.rows[0].idx);
+        const idx = queryResult.rows[0].idx;
+        const accessToken = signAccessToken(idx, queryResult.rows[0].is_admin ? true : false);
 
         res.cookie("accessToken", accessToken, { httpOnly: true, secure: false });
-        res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: false });
-        req.session.idx = queryResult.rows[0];
+
         next(result);
 
         res.status(200).send(result);
@@ -56,16 +60,20 @@ router.post("/login", logoutAuth, async (req, res, next) => {
 });
 
 //  GET/logout          =>로그아웃
-router.get("/logout", loginAuth, (req, res, next) => {
+router.get("/logout", loginAuth, async (req, res, next) => {
     const result = {
         data: null,
     };
-    next(result);
-    req.session.destroy();
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
 
-    res.status(200).send();
+    try {
+        next(result);
+        req.session.destroy();
+        res.clearCookie("accessToken");
+
+        res.status(200).send(result);
+    } catch (err) {
+        next(err);
+    }
 });
 
 //  GET/find/id         =>아이디 찾기
@@ -74,16 +82,18 @@ router.get("/find/id", logoutAuth, async (req, res, next) => {
     const result = {
         data: null,
     };
+    const exception = {
+        message: "id not Found",
+        status: 401,
+    };
     try {
         queryCheck({ name, phonenumber });
 
         const sql = "SELECT id FROM account WHERE name = $1 AND phonenumber = $2 AND account_deleted = false";
         const queryResult = await pgPool.query(sql, [name, phonenumber]);
 
-        if (queryResult.rows.length === 0) {
-            const error = new Error("id not Found");
-            error.status = 401;
-            throw error;
+        if (!queryResult.rows) {
+            throw exception;
         }
 
         result.data = queryResult.rows[0].id;
@@ -100,17 +110,18 @@ router.get("/find/password", logoutAuth, async (req, res, next) => {
     const result = {
         data: null,
     };
-
+    const exception = {
+        message: "id not Found",
+        status: 401,
+    };
     try {
         queryCheck({ id, name, phonenumber });
 
         const sql = `SELECT password FROM account WHERE id = $1 AND name = $2 AND phonenumber = $3 AND account_deleted = false`;
         const queryResult = await pgPool.query(sql, [id, name, phonenumber]);
 
-        if (queryResult.rows.length === 0) {
-            const error = new Error("password not Found");
-            error.status = 401;
-            throw error;
+        if (!queryResult.rows) {
+            throw exception;
         }
 
         result.data = queryResult.rows[0].password; //해시된 값 출력
@@ -130,15 +141,16 @@ router.get("/", loginAuth, async (req, res, next) => {
     const result = {
         data: null,
     };
-
+    const exception = {
+        message: "id not Found",
+        status: 401,
+    };
     try {
         const sql = "SELECT * FROM account WHERE idx = $1";
         const queryResult = await pgPool.query(sql, [idx]);
 
-        if (!queryResult || queryResult.rows.length === 0) {
-            const error = new Error("id not Found");
-            error.status = 404;
-            throw error;
+        if (!queryResult || !queryResult.rows) {
+            throw exception;
         }
         next(result);
         result.data = {
@@ -159,6 +171,10 @@ router.post("/", logoutAuth, async (req, res, next) => {
     const result = {
         data: null,
     };
+    const exception = {
+        message: "id already exist",
+        status: 400,
+    };
     try {
         queryCheck({ id, password, passwordCheck, name, phonenumber });
         const pwHashed = await pwHash(password);
@@ -166,14 +182,13 @@ router.post("/", logoutAuth, async (req, res, next) => {
         const doubleCheckSql = "SELECT * FROM account WHERE id = $1";
         const doubleCheckQueryResult = await pgPool.query(doubleCheckSql, [id]);
 
-        if (doubleCheckQueryResult.rows.length > 0) {
-            const error = new Error("id already exist");
-            error.status = "400";
-            throw error;
+        if (doubleCheckQueryResult.rows) {
+            throw exception;
         }
 
         const sql = "INSERT INTO account (id, name, password, phonenumber, account_deleted) VALUES ($1, $2, $3, $4, false)";
         await pgPool.query(sql, [id, name, pwHashed, phonenumber]);
+
         next(result);
         res.status(200).send();
     } catch (err) {

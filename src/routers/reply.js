@@ -27,7 +27,7 @@ router.get("/", loginAuth, async (req, res, next) => {
 
         const sql = "SELECT * FROM reply WHERE reply_deleted = false AND board_uid = $1 ORDER BY reply_uid LIMIT $2 OFFSET $3";
         let queryResult = await pgPool.query(sql, [uid, pageSizeOption, (parseInt(page) - 1) * pageSizeOption]);
-        if (!queryResult || queryResult.rows.length === 0) {
+        if (!queryResult || !queryResult.rows) {
             result.message = "no reply";
         }
         queryResult.rows.forEach((elem) => {

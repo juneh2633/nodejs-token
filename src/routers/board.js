@@ -44,22 +44,24 @@ router.get("/:uid", loginAuth, async (req, res, next) => {
         data: null,
         isMine: false,
     };
-
+    const exception = {
+        message: "board not Found",
+        status: 400,
+    };
     try {
         queryCheck({ uid });
 
         const sql = "SELECT * FROM board WHERE board_uid = $1 AND board_deleted = false";
         const queryResult = await pgPool.query(sql, [uid]);
 
-        if (!queryResult || queryResult.rows.length === 0) {
-            const error = new Error("board not Found");
-            error.status = 400;
-            next(error);
+        if (!queryResult || !queryResult.rows) {
+            throw exception;
         }
 
         if (queryResult.rows[0].idx === userUid) {
             result.isMine = true;
         }
+
         next(result);
         result.data = queryResult.rows[0];
         res.status(200).send(result);

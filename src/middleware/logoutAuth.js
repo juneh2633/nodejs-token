@@ -2,7 +2,8 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
     const accessToken = req.cookies.accessToken;
-
+    const error = new Error("already have token");
+    error.status = 401;
     try {
         if (accessToken) {
             jwt.verify(accessToken, process.env.SECRET_KEY);

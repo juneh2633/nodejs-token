@@ -53,6 +53,11 @@ router.get("/", adminAuth, async (req, res, next) => {
             };
         }
     }
+    if (fromDate === toDate) {
+        findObj.time = {
+            $gte: new Date(fromDate),
+        };
+    }
 
     try {
         const queryResult = await mongoClient.find(findObj).sort({ time: asc }).toArray();
