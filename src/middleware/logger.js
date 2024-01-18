@@ -24,6 +24,7 @@ module.exports = async (result, req, res, next) => {
             next(result);
             return;
         }
+
         if (result.status) {
             console.log(result.message);
             await mongoClient.insertOne({
@@ -33,14 +34,12 @@ module.exports = async (result, req, res, next) => {
                 method: req.method,
                 api_path: urlObj.pathname,
                 input: input || null,
-                stack: result.stack || null,
                 status: result.status || 500,
                 message: result.message || null,
                 time: new Date(),
             });
 
             next(result);
-            return;
         } else {
             await mongoClient.insertOne({
                 level: "info",

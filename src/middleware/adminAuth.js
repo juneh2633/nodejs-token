@@ -7,8 +7,10 @@ module.exports = (req, res, next) => {
     const { accessToken, refreshToken } = req.cookies;
     const verifyAccessToken = verifyToken(accessToken);
     const verifyRefreshToken = verifyToken(refreshToken);
-    const error = new Error("dont have admin permission");
-    error.status = 401;
+    const exception = {
+        message: "dont have admin permission",
+        status: 401,
+    };
 
     if (accessToken) {
         if (!verifyAccessToken.success) {
@@ -18,16 +20,16 @@ module.exports = (req, res, next) => {
                 console.log("refresh");
                 next();
             } else {
-                next(error);
+                next(exception);
             }
         } else {
             if (tokenElement(accessToken).admin) {
                 next();
             } else {
-                next(error);
+                next(exception);
             }
         }
     } else {
-        next(error);
+        next(exception);
     }
 };

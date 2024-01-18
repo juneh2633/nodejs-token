@@ -6,6 +6,13 @@ const url = require("url");
 const https = require("https");
 const app = express();
 
+const accountAPI = require("./src/routers/account");
+const boardAPI = require("./src/routers/board");
+const replyAPI = require("./src/routers/reply");
+const logAPI = require("./src/routers/log");
+const testAPI = require("./src/routers/test");
+const logger = require("./src/middleware/logger");
+
 //-----------------config----------------------------------//
 require("dotenv").config();
 const { HTTP_PORT, HTTPS_PORT } = require("./src/config/portConfig");
@@ -28,23 +35,13 @@ app.use(express.json());
 
 //---------------------------API-------------------------------------------//
 
-const accountAPI = require("./src/routers/account");
 app.use("/account", accountAPI);
-
-const boardAPI = require("./src/routers/board");
 app.use("/board", boardAPI);
-
-const replyAPI = require("./src/routers/reply");
 app.use("/reply", replyAPI);
-
-const logAPI = require("./src/routers/log");
 app.use("/log", logAPI);
-
-const testAPI = require("./src/routers/test");
 app.use("/test", testAPI);
 
 //----------------------------logger---------------------------------//
-const logger = require("./src/middleware/logger");
 app.use(logger);
 
 //----------------------------error_handler---------------------------------//

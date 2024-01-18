@@ -2,10 +2,10 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (token) => {
     try {
-        jwt.verify(token, process.env.SECRET_KEY);
+        jwt.verify(token, process.env.SECRET_KEY, { algorithms: ["HS256"] });
         return true;
     } catch (err) {
-        return null;
+        return false;
     }
 };
 // expired 말고 verify에서 걸리는 경우가 있는가?
